@@ -1,8 +1,16 @@
-use axum::Router;
+use crate::{server, FoxtiveAxumState};
 use axum::http::{HeaderValue, Method};
+use axum::Router;
+use foxtive::results::AppResult;
+use foxtive::setup::trace::Tracing;
 use foxtive::setup::FoxtiveSetup;
-use foxtive::setup::logger::TracingConfig;
+use futures::future::BoxFuture;
+use std::future::Future;
+use std::sync::Arc;
 use std::time::Duration;
+
+pub type BootstrapFn =
+    Box<dyn FnOnce(Arc<FoxtiveAxumState>) -> BoxFuture<'static, AppResult<()>> + Send + Sync>;
 
 #[cfg(feature = "static")]
 pub struct StaticFileConfig {
@@ -10,7 +18,15 @@ pub struct StaticFileConfig {
     pub dir: String,
 }
 
-pub struct ServerConfig {
+pub struct Server {
+    pub(crate) foxtive_setup: FoxtiveSetup,
+
+    pub(crate) router: Router,
+
+    pub(crate) bootstrap: Option<BootstrapFn>,
+
+    pub(crate) on_started: Option<Box<dyn FnOnce()>>,
+
     pub(crate) host: String,
     pub(crate) port: u16,
     pub(crate) workers: usize,
@@ -28,9 +44,8 @@ pub struct ServerConfig {
     pub(crate) backlog: i32,
 
     pub(crate) app: String,
-    pub(crate) foxtive_setup: FoxtiveSetup,
 
-    pub(crate) tracing_config: Option<TracingConfig>,
+    pub(crate) tracing_config: Option<Tracing>,
 
     #[cfg(feature = "static")]
     pub(crate) static_config: StaticFileConfig,
@@ -38,22 +53,18 @@ pub struct ServerConfig {
     /// whether the app bootstrap has started
     pub(crate) has_started_bootstrap: bool,
 
-    pub(crate) router: Router,
-
     /// list of allowed CORS origins
     pub(crate) allowed_origins: Vec<HeaderValue>,
 
     /// list of allowed CORS origins
     pub(crate) allowed_methods: Vec<Method>,
-
-    pub(crate) on_server_started: Option<Box<dyn FnOnce()>>,
 }
 
-impl ServerConfig {
-    pub fn create(host: &str, port: u16, setup: FoxtiveSetup) -> ServerConfig {
-        ServerConfig {
-            host: host.to_string(),
-            port,
+impl Server {
+    pub fn new(setup: FoxtiveSetup) -> Server {
+        Server {
+            port: 8023,
+            host: "0.0.0.0".to_string(),
             workers: 2,
             max_connections: 25_000,
             max_connections_rate: 256,
@@ -69,19 +80,25 @@ impl ServerConfig {
             router: Router::new(),
             allowed_origins: vec![],
             allowed_methods: vec![],
-            on_server_started: None,
             tracing_config: None,
+            on_started: None,
+            bootstrap: None,
         }
     }
 
     #[cfg(feature = "static")]
-    pub fn create_with_static(
-        host: &str,
-        port: u16,
-        setup: FoxtiveSetup,
-        config: StaticFileConfig,
-    ) -> ServerConfig {
-        Self::create(host, port, setup).static_config(config)
+    pub fn create_with_static(setup: FoxtiveSetup, config: StaticFileConfig) -> Server {
+        Self::new(setup).static_config(config)
+    }
+
+    pub fn host(mut self, host: impl Into<String>) -> Self {
+        self.host = host.into();
+        self
+    }
+
+    pub fn port(mut self, port: u16) -> Self {
+        self.port = port;
+        self
     }
 
     pub fn app(mut self, app: &str) -> Self {
@@ -94,7 +111,7 @@ impl ServerConfig {
         self
     }
 
-    pub fn tracing_config(mut self, config: TracingConfig) -> Self {
+    pub fn tracing(mut self, config: Tracing) -> Self {
         self.tracing_config = Some(config);
         self
     }
@@ -195,14 +212,34 @@ impl ServerConfig {
         self
     }
 
-    pub fn on_server_started<TB: FnOnce() + 'static>(mut self, func: TB) -> Self {
-        self.on_server_started = Some(Box::new(func));
+    /// Provide a function to execute after the server starts
+    pub fn on_started<TB: FnOnce() + 'static>(mut self, func: TB) -> Self {
+        self.on_started = Some(Box::new(func));
+        self
+    }
+
+    /// Provide a function to execute before the server starts
+    pub fn bootstrap<F, Fut>(mut self, func: F) -> Self
+    where
+        F: FnOnce(Arc<FoxtiveAxumState>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = AppResult<()>> + Send + Sync + 'static,
+    {
+        self.bootstrap = Some(Box::new(|state| Box::pin(func(state))));
         self
     }
 
     pub fn has_started_bootstrap(mut self, has_started_bootstrap: bool) -> Self {
         self.has_started_bootstrap = has_started_bootstrap;
         self
+    }
+
+    pub async fn run(self) -> AppResult<()> {
+        server::run(self).await
+    }
+
+    /// Init tracing and load environment variables
+    pub fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
+        server::init_bootstrap(service, config)
     }
 }
 

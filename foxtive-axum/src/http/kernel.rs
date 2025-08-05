@@ -6,12 +6,13 @@ use axum::body::Body;
 use axum::http::Request;
 use axum::response::Response;
 use std::convert::Infallible;
+use std::sync::Arc;
 use tower::{ServiceBuilder, service_fn};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 
-pub(crate) fn setup(router: Router, setup: &FoxtiveAxumState) -> Router {
+pub(crate) fn setup(router: Router, setup: Arc<FoxtiveAxumState>) -> Router {
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::new().include_headers(true))
         .on_response(DefaultOnResponse::new().include_headers(true));
