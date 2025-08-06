@@ -1,13 +1,16 @@
-use crate::{FoxtiveAxumState, server};
-use axum::Router;
+use crate::{server, FoxtiveAxumState};
 use axum::http::{HeaderValue, Method};
+use axum::Router;
 use foxtive::results::AppResult;
-use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
+use foxtive::setup::FoxtiveSetup;
 use futures::future::BoxFuture;
 use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
+
+pub type ShutdownSignalHandler = Pin<Box<dyn Future<Output = ()> + Send + Sync + 'static>>;
 
 pub type BootstrapFn =
     Box<dyn FnOnce(Arc<FoxtiveAxumState>) -> BoxFuture<'static, AppResult<()>> + Send + Sync>;
@@ -26,6 +29,8 @@ pub struct Server {
     pub(crate) bootstrap: Option<BootstrapFn>,
 
     pub(crate) on_started: Option<Box<dyn FnOnce()>>,
+
+    pub(crate) on_shutdown: Option<ShutdownSignalHandler>,
 
     pub(crate) host: String,
     pub(crate) port: u16,
@@ -82,6 +87,7 @@ impl Server {
             allowed_methods: vec![],
             tracing_config: None,
             on_started: None,
+            on_shutdown: None,
             bootstrap: None,
         }
     }
@@ -215,6 +221,14 @@ impl Server {
     /// Provide a function to execute after the server starts
     pub fn on_started<TB: FnOnce() + 'static>(mut self, func: TB) -> Self {
         self.on_started = Some(Box::new(func));
+        self
+    }
+
+    pub fn on_shutdown<F>(mut self, func: F) -> Self
+    where
+        F: Future<Output = ()> + Send + Sync + 'static,
+    {
+        self.on_shutdown = Some(Box::pin(func));
         self
     }
 

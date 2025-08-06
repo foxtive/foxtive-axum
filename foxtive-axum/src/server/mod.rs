@@ -5,14 +5,15 @@ pub use config::Server;
 pub use config::StaticFileConfig;
 
 use crate::http::kernel;
-use crate::setup::{FoxtiveAxumSetup, make_state};
-use foxtive::Error;
+use crate::server::config::ShutdownSignalHandler;
+use crate::setup::{make_state, FoxtiveAxumSetup};
 use foxtive::prelude::AppResult;
 use foxtive::setup::load_environment_variables;
 use foxtive::setup::trace::Tracing;
+use foxtive::Error;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
-use tracing::info;
+use tracing::{info, warn};
 
 pub(crate) fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
     foxtive::setup::trace::init_tracing(config)?;
@@ -60,12 +61,12 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
     }
 
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal(config.on_shutdown))
         .await
         .map_err(Error::from)
 }
 
-async fn shutdown_signal() {
+async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>) {
     // Wait for SIGINT (Ctrl+C) or SIGTERM (in k8s or docker)
     let ctrl_c = async {
         signal::ctrl_c()
@@ -75,7 +76,7 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
-        use tokio::signal::unix::{SignalKind, signal};
+        use tokio::signal::unix::{signal, SignalKind};
         let mut term = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
         term.recv().await;
     };
@@ -88,5 +89,10 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
 
-    println!("\nSignal received. Shutting down...");
+    warn!("Signal received. Shutting down...");
+
+    // Execute app-level shutdown signal
+    if let Some(on_server_shutdown) = app_signal {
+        on_server_shutdown.await;
+    }
 }

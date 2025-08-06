@@ -1,6 +1,6 @@
 [package]
 name = "foxtive-axum"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 description = "Micro-Framework Based on Axum"
@@ -31,3 +31,7 @@ validator = { version = "0.20.0", features = ["derive"], optional = true }
 [[example]]
 name = "basic"
 path = "examples/basic.rs"
+
+[[example]]
+name = "shutdown-signal"
+path = "examples/shutdown_signal.rs"
