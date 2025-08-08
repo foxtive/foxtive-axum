@@ -16,12 +16,11 @@ impl IntoResponse for ByteExtractionError {
             ByteExtractionError::InvalidUtf8(err) => {
                 (StatusCode::BAD_REQUEST, format!("Invalid UTF-8: {}", err))
             }
-            ByteExtractionError::PayloadTooLarge => {
-                (StatusCode::PAYLOAD_TOO_LARGE, "Payload too large".to_string())
-            }
-            ByteExtractionError::Other(err) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, err)
-            }
+            ByteExtractionError::PayloadTooLarge => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "Payload too large".to_string(),
+            ),
+            ByteExtractionError::Other(err) => (StatusCode::INTERNAL_SERVER_ERROR, err),
         };
 
         (status, error_message).into_response()

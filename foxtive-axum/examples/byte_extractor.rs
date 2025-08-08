@@ -4,14 +4,14 @@ use foxtive::Environment;
 use foxtive::results::AppResult;
 use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
-use foxtive_axum::http::HttpResult;
-use foxtive_axum::http::response::ext::StructResponseExt;
-use foxtive_axum::server::Server;
-use tracing::info;
 use foxtive_axum::enums::response_code::ResponseCode;
 use foxtive_axum::error::HttpError;
 use foxtive_axum::helpers::responder::Responder;
+use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::extractors::ByteBody;
+use foxtive_axum::http::response::ext::StructResponseExt;
+use foxtive_axum::server::Server;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -42,10 +42,7 @@ async fn main() -> AppResult<()> {
 
 async fn handler(body: ByteBody) -> HttpResult {
     if body.is_empty() {
-        return "No file data received".respond_code(
-            ResponseCode::BadRequest,
-            "Empty file upload"
-        );
+        return "No file data received".respond_code(ResponseCode::BadRequest, "Empty file upload");
     }
 
     let file_size = body.len();
