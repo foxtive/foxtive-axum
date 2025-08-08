@@ -1,6 +1,6 @@
 use crate::{FoxtiveAxumState, server};
 use axum::Router;
-use axum::http::{HeaderValue, Method};
+use axum::http::{HeaderName, HeaderValue, Method};
 use foxtive::results::AppResult;
 use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
@@ -63,6 +63,9 @@ pub struct Server {
 
     /// list of allowed CORS origins
     pub(crate) allowed_methods: Vec<Method>,
+
+    /// list of allowed CORS headers
+    pub(crate) allowed_headers: Vec<HeaderName>,
 }
 
 impl Server {
@@ -85,6 +88,7 @@ impl Server {
             router: Router::new(),
             allowed_origins: vec![],
             allowed_methods: vec![],
+            allowed_headers: vec![],
             tracing_config: None,
             on_started: None,
             on_shutdown: None,
@@ -202,13 +206,18 @@ impl Server {
         self
     }
 
-    pub fn allowed_origins(mut self, allowed_origins: Vec<HeaderValue>) -> Self {
-        self.allowed_origins = allowed_origins;
+    pub fn allowed_origins(mut self, origins: Vec<HeaderValue>) -> Self {
+        self.allowed_origins = origins;
         self
     }
 
-    pub fn allowed_methods(mut self, allowed_methods: Vec<Method>) -> Self {
-        self.allowed_methods = allowed_methods;
+    pub fn allowed_methods(mut self, methods: Vec<Method>) -> Self {
+        self.allowed_methods = methods;
+        self
+    }
+
+    pub fn allowed_headers(mut self, headers: Vec<HeaderName>) -> Self {
+        self.allowed_headers = headers;
         self
     }
 
