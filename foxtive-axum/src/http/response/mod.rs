@@ -1,4 +1,4 @@
-pub(crate) mod anyhow;
+pub mod anyhow;
 pub mod ext;
 mod message;
 pub mod respond;

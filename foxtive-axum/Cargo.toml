@@ -1,6 +1,6 @@
 [package]
 name = "foxtive-axum"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 description = "Micro-Framework Based on Axum"
@@ -13,6 +13,7 @@ static = ["tower-http/fs"]
 validator = ["dep:validator"]
 
 [dependencies]
+async-trait = "0.1.88"
 futures = { workspace = true }
 thiserror = { workspace = true }
 axum = { workspace = true, features = ["tokio", "http1"] }
@@ -35,3 +36,7 @@ path = "examples/basic.rs"
 [[example]]
 name = "shutdown-signal"
 path = "examples/shutdown_signal.rs"
+
+[[example]]
+name = "byte-extractor"
+path = "examples/byte_extractor.rs"
