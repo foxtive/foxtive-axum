@@ -30,6 +30,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
     let state = make_state(FoxtiveAxumSetup {
         allowed_origins: config.allowed_origins,
         allowed_methods: config.allowed_methods,
+        allowed_headers: config.allowed_headers,
         foxtive_setup: config.foxtive_setup,
     })
     .await;

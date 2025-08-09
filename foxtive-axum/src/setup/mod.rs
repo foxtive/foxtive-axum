@@ -1,5 +1,5 @@
 use crate::FOXTIVE_NTEX;
-use axum::http::{HeaderValue, Method};
+use axum::http::{HeaderName, HeaderValue, Method};
 use foxtive::setup::FoxtiveSetup;
 use state::FoxtiveAxumState;
 use std::sync::Arc;
@@ -9,6 +9,7 @@ pub mod state;
 pub struct FoxtiveAxumSetup {
     pub allowed_origins: Vec<HeaderValue>,
     pub allowed_methods: Vec<Method>,
+    pub allowed_headers: Vec<HeaderName>,
     pub foxtive_setup: FoxtiveSetup,
 }
 
@@ -28,5 +29,6 @@ async fn create_app_state(setup: &FoxtiveAxumSetup) -> FoxtiveAxumState {
     FoxtiveAxumState {
         allowed_origins: setup.allowed_origins.clone(),
         allowed_methods: setup.allowed_methods.clone(),
+        allowed_headers: setup.allowed_headers.clone(),
     }
 }

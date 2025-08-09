@@ -1,6 +1,9 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.3.0 (2024-08-08)
+* feat(cors): allowed headers config
+
 ### 0.2.0 (2024-08-08)
 * feat(extractor): add ByteBody, JsonBody, StringBody
 
