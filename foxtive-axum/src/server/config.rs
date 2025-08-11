@@ -10,10 +10,10 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-pub type ShutdownSignalHandler = Pin<Box<dyn Future<Output = ()> + Send + Sync + 'static>>;
+pub type ShutdownSignalHandler = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 
 pub type BootstrapFn =
-    Box<dyn FnOnce(Arc<FoxtiveAxumState>) -> BoxFuture<'static, AppResult<()>> + Send + Sync>;
+    Box<dyn FnOnce(Arc<FoxtiveAxumState>) -> BoxFuture<'static, AppResult<()>> + Send>;
 
 #[cfg(feature = "static")]
 pub struct StaticFileConfig {
@@ -235,7 +235,7 @@ impl Server {
 
     pub fn on_shutdown<F>(mut self, func: F) -> Self
     where
-        F: Future<Output = ()> + Send + Sync + 'static,
+        F: Future<Output = ()> + Send + 'static,
     {
         self.on_shutdown = Some(Box::pin(func));
         self
@@ -244,8 +244,8 @@ impl Server {
     /// Provide a function to execute before the server starts
     pub fn bootstrap<F, Fut>(mut self, func: F) -> Self
     where
-        F: FnOnce(Arc<FoxtiveAxumState>) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = AppResult<()>> + Send + Sync + 'static,
+        F: FnOnce(Arc<FoxtiveAxumState>) -> Fut + Send + 'static,
+        Fut: Future<Output = AppResult<()>> + Send + 'static,
     {
         self.bootstrap = Some(Box::new(|state| Box::pin(func(state))));
         self
