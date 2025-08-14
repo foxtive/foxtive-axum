@@ -1,6 +1,10 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.4.0 (2025-08-14)
+* refactor(foxtive): avoid panics
+* bump(foxtive): to version 0.17.0
+
 ### 0.3.1 (2025-08-11)
 * fix(setup): relax async fut requirement to not require Sync marker
 

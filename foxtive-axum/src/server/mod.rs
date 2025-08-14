@@ -33,7 +33,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         allowed_headers: config.allowed_headers,
         foxtive_setup: config.foxtive_setup,
     })
-    .await;
+    .await?;
 
     if let Some(bootstrap) = config.bootstrap {
         bootstrap(state.clone()).await?;

@@ -10,6 +10,6 @@ pub mod setup;
 pub use setup::state::FoxtiveAxumState;
 use std::sync::OnceLock;
 
-pub static FOXTIVE_NTEX: OnceLock<FoxtiveAxumState> = OnceLock::new();
+pub static FOXTIVE_AXUM: OnceLock<FoxtiveAxumState> = OnceLock::new();
 
 pub use crate::ext::app_state::FoxtiveAxumExt;
