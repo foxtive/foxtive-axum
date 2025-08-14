@@ -17,11 +17,11 @@ pub struct FoxtiveAxumSetup {
 }
 
 pub(crate) async fn make_state(setup: FoxtiveAxumSetup) -> AppResult<Arc<FoxtiveAxumState>> {
-    debug!("Creating Foxtive state");
-    foxtive::setup::make_state(setup.foxtive_setup).await?;
-
     debug!("Creating Foxtive-Axum state");
     let app = create_state(&setup).await;
+
+    debug!("Creating Foxtive state");
+    foxtive::setup::make_state(setup.foxtive_setup).await?;
 
     FOXTIVE_AXUM.set(app.clone()).map_err(|_| {
         AppMessage::InternalServerErrorMessage("failed to set up foxtive-axum").ae()
