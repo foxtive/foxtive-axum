@@ -9,7 +9,7 @@ tracing = "0.1.41"
 futures = "0.3.31"
 serde = { version = "1.0.219", default-features = false }
 serde_json = { version = "1.0.142", default-features = false }
-thiserror = { version = "2.0.12", default-features = false }
+thiserror = { version = "2.0.14", default-features = false }
 axum = { version = "0.8.4", default-features = false }
-foxtive = { version = "0.15.0", default-features = false }
+foxtive = { version = "0.17.0", default-features = false }
 tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros"] }
