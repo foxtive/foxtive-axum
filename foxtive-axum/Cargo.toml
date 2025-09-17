@@ -11,7 +11,7 @@ authors = ["ahmard"]
 cors = ["tower-http/cors"]
 validator = ["dep:validator"]
 templating = ["foxtive/templating"]
-static = ["tower-http/fs", "dep:mime_guess"]
+static = ["tower-http/fs", "tokio/fs", "dep:mime_guess"]
 
 [dependencies]
 futures = { workspace = true }

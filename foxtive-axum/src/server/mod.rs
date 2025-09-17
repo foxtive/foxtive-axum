@@ -30,6 +30,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
     #[allow(unused_mut)]
     let mut app = config.router.layer(TraceLayer::new_for_http());
 
+    #[allow(unused_mut)]
     let mut static_file_dir: Option<String> = None;
 
     #[cfg(feature = "static")]
@@ -47,6 +48,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         allowed_methods: config.allowed_methods,
         allowed_headers: config.allowed_headers,
         foxtive_setup: config.foxtive_setup,
+        #[cfg(feature = "static")]
         allowed_static_media_extensions: config.allowed_static_media_extensions,
     })
     .await?;

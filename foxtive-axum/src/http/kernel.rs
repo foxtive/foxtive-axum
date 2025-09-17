@@ -1,21 +1,18 @@
 use crate::enums::response_code::ResponseCode;
 use crate::http::responder::Responder;
-use crate::http::static_file::{is_url_a_file, resolve_static_file_path};
 use crate::http::HttpResult;
-use crate::{FoxtiveAxumExt, FoxtiveAxumState, FOXTIVE_AXUM};
+use crate::FoxtiveAxumState;
 use axum::body::Body;
-use axum::http::{HeaderValue, Request, StatusCode};
+use axum::http::{HeaderValue, Request};
 use axum::response::{IntoResponse, Response};
 use axum::Router;
 use foxtive::Error;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::fs;
 use tower::{service_fn, ServiceBuilder};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
-use tracing::error;
 
 pub(crate) fn setup(router: Router, setup: Arc<FoxtiveAxumState>) -> Router {
     let trace_layer = TraceLayer::new_for_http()
@@ -44,32 +41,39 @@ pub(crate) fn setup(router: Router, setup: Arc<FoxtiveAxumState>) -> Router {
         .fallback_service(service_fn(fallback_404))
 }
 
+#[allow(unused_variables)]
 async fn fallback_404(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let uri = req.uri().path();
-    let static_file_dir = &FOXTIVE_AXUM.app().static_file_dir;
-
-    // check if a static file can be served on this url
-    // this is useful to handle static file request at root path
-    if let Some(static_file_dir) = static_file_dir
-        && is_url_a_file(uri)
+    #[cfg(feature = "static")]
     {
-        let path = resolve_static_file_path(static_file_dir.as_ref(), uri.as_ref());
-        if let Ok(contents) = fs::read(path).await {
-            // guess file mime
-            let guess = mime_guess::from_path(uri);
-            let mut builder = Response::builder().status(StatusCode::OK);
+        use crate::http::static_file::{is_url_a_file, resolve_static_file_path};
+        use crate::{FoxtiveAxumExt, FOXTIVE_AXUM};
 
-            if let Some(mime) = guess.first() {
-                builder = builder.header("Content-Type", mime.as_ref());
+        let uri = req.uri().path();
+        let static_file_dir = &FOXTIVE_AXUM.app().static_file_dir;
+
+        // check if a static file can be served on this url
+        // this is useful to handle static file request at root path
+        if let Some(static_file_dir) = static_file_dir
+            && is_url_a_file(uri)
+        {
+            let path = resolve_static_file_path(static_file_dir.as_ref(), uri.as_ref());
+            if let Ok(contents) = tokio::fs::read(path).await {
+                // guess file mime
+                let guess = mime_guess::from_path(uri);
+                let mut builder = Response::builder().status(axum::http::StatusCode::OK);
+
+                if let Some(mime) = guess.first() {
+                    builder = builder.header("Content-Type", mime.as_ref());
+                }
+
+                return match builder.body(Body::from(contents.to_vec())) {
+                    Ok(response) => Ok(response),
+                    Err(err) => {
+                        tracing::error!("Error building response: {:?}", err);
+                        Ok(Responder::internal_server_error())
+                    }
+                };
             }
-
-            return match builder.body(Body::from(contents.to_vec())) {
-                Ok(response) => Ok(response),
-                Err(err) => {
-                    error!("Error building response: {:?}", err);
-                    Ok(Responder::internal_server_error())
-                },
-            };
         }
     }
 
