@@ -387,6 +387,7 @@ dependencies = [
  "axum",
  "foxtive",
  "futures",
+ "mime_guess",
  "serde",
  "serde_json",
  "thiserror",

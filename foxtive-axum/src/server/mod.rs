@@ -27,27 +27,32 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         init_bootstrap(&config.app, t_config).expect("failed to init bootstrap: ");
     }
 
+    #[allow(unused_mut)]
+    let mut app = config.router.layer(TraceLayer::new_for_http());
+
+    let mut static_file_dir: Option<String> = None;
+
+    #[cfg(feature = "static")]
+    if cfg!(feature = "static") {
+        app = {
+            static_file_dir = Some(config.static_config.dir.clone());
+            let dir = tower_http::services::ServeDir::new(config.static_config.dir);
+            app.nest_service(&config.static_config.path, dir)
+        };
+    }
+
     let state = make_state(FoxtiveAxumSetup {
+        static_file_dir,
         allowed_origins: config.allowed_origins,
         allowed_methods: config.allowed_methods,
         allowed_headers: config.allowed_headers,
         foxtive_setup: config.foxtive_setup,
+        allowed_static_media_extensions: config.allowed_static_media_extensions,
     })
     .await?;
 
     if let Some(bootstrap) = config.bootstrap {
         bootstrap(state.clone()).await?;
-    }
-
-    #[allow(unused_mut)]
-    let mut app = config.router.layer(TraceLayer::new_for_http());
-
-    #[cfg(feature = "static")]
-    if cfg!(feature = "static") {
-        app = {
-            let dir = tower_http::services::ServeDir::new(config.static_config.dir);
-            app.nest_service(&config.static_config.path, dir)
-        };
     }
 
     let app = kernel::setup(app, state);

@@ -70,6 +70,10 @@ pub struct Server {
 
     /// list of allowed CORS headers
     pub(crate) allowed_headers: Vec<HeaderName>,
+
+    /// list of allowed static media extensions
+    #[cfg(feature = "static")]
+    pub(crate) allowed_static_media_extensions: Option<Vec<String>>,
 }
 
 impl Server {
@@ -99,12 +103,20 @@ impl Server {
             on_started: None,
             on_shutdown: None,
             bootstrap: None,
+            #[cfg(feature = "static")]
+            allowed_static_media_extensions: None,
         }
     }
 
     #[cfg(feature = "static")]
     pub fn create_with_static(setup: FoxtiveSetup, config: StaticFileConfig) -> Server {
         Self::new(setup).static_config(config)
+    }
+
+    #[cfg(feature = "static")]
+    pub fn static_media_extensions(mut self, extensions: Vec<String>) -> Self {
+        self.allowed_static_media_extensions = Some(extensions);
+        self
     }
 
     pub fn host(mut self, host: impl Into<String>) -> Self {

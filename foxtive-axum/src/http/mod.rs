@@ -5,5 +5,6 @@ pub mod extractors;
 pub(crate) mod kernel;
 pub mod response;
 pub mod responder;
+pub(crate) mod static_file;
 
 pub type HttpResult = Result<Response, HttpError>;

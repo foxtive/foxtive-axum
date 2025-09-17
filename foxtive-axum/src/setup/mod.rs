@@ -1,3 +1,4 @@
+use crate::http::static_file::DEFAULT_STATIC_MEDIA_EXTENSIONS;
 use crate::FOXTIVE_AXUM;
 use axum::http::{HeaderName, HeaderValue, Method};
 use foxtive::prelude::AppMessage;
@@ -14,6 +15,9 @@ pub struct FoxtiveAxumSetup {
     pub allowed_methods: Vec<Method>,
     pub allowed_headers: Vec<HeaderName>,
     pub foxtive_setup: FoxtiveSetup,
+    pub(crate) static_file_dir: Option<String>,
+    #[cfg(feature = "static")]
+    pub(crate) allowed_static_media_extensions: Option<Vec<String>>,
 }
 
 pub(crate) async fn make_state(setup: FoxtiveAxumSetup) -> AppResult<Arc<FoxtiveAxumState>> {
@@ -35,5 +39,12 @@ async fn create_state(setup: &FoxtiveAxumSetup) -> FoxtiveAxumState {
         allowed_origins: setup.allowed_origins.clone(),
         allowed_methods: setup.allowed_methods.clone(),
         allowed_headers: setup.allowed_headers.clone(),
+        static_file_dir: setup.static_file_dir.clone(),
+        allowed_static_media_extensions: setup.allowed_static_media_extensions.clone().unwrap_or(
+            DEFAULT_STATIC_MEDIA_EXTENSIONS
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        ),
     }
 }
