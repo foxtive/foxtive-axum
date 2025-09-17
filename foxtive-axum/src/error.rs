@@ -5,6 +5,7 @@ use foxtive::Error;
 use foxtive::prelude::AppMessage;
 use std::string::FromUtf8Error;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 #[derive(Error, Debug)]
 pub enum HttpError {
@@ -16,6 +17,8 @@ pub enum HttpError {
     AppMessage(#[from] AppMessage),
     #[error("Utf8 Error: {0}")]
     Utf8Error(#[from] FromUtf8Error),
+    #[error("Join Error: {0}")]
+    JoinError(#[from] JoinError),
     #[cfg(feature = "validator")]
     #[error("Validation Error: {0}")]
     ValidationError(#[from] validator::ValidationErrors),

@@ -1,5 +1,6 @@
 mod config;
 
+use std::net::SocketAddr;
 pub use config::Server;
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
@@ -68,7 +69,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         on_server_started();
     }
 
-    axum::serve(listener, app)
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_signal(config.on_shutdown))
         .await
         .map_err(Error::from)
