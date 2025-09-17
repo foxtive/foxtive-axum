@@ -1,9 +1,9 @@
 mod config;
 
-use std::net::SocketAddr;
 pub use config::Server;
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
+use std::net::SocketAddr;
 
 use crate::http::kernel;
 use crate::server::config::ShutdownSignalHandler;
@@ -69,10 +69,13 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         on_server_started();
     }
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(shutdown_signal(config.on_shutdown))
-        .await
-        .map_err(Error::from)
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal(config.on_shutdown))
+    .await
+    .map_err(Error::from)
 }
 
 async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>) {
