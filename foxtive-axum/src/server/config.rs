@@ -5,7 +5,6 @@ use foxtive::results::AppResult;
 use foxtive::setup::trace::Tracing;
 use foxtive::setup::FoxtiveSetup;
 use futures::future::BoxFuture;
-use std::ffi::OsStr;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -246,7 +245,7 @@ impl Server {
     }
 
     #[cfg(feature = "templating")]
-    pub fn template_directory<D: AsRef<OsStr> + ?Sized>(mut self, dir: &D) -> Self {
+    pub fn template_directory<D: AsRef<std::ffi::OsStr> + ?Sized>(mut self, dir: &D) -> Self {
         self.template_directory = dir.as_ref().to_os_string().into_string().unwrap();
         self
     }
