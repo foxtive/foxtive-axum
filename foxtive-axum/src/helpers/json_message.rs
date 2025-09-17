@@ -1,4 +1,4 @@
-use crate::helpers::responder::JsonResponse;
+use crate::http::responder::JsonResponse;
 use foxtive::helpers::time::current_timestamp;
 use serde::Serialize;
 

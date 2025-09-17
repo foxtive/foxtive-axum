@@ -1,6 +1,6 @@
 use crate::FoxtiveAxumState;
 use crate::enums::response_code::ResponseCode;
-use crate::helpers::responder::Responder;
+use crate::http::responder::Responder;
 use crate::http::HttpResult;
 use axum::Router;
 use axum::body::Body;

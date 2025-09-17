@@ -23,6 +23,7 @@ async fn main() -> AppResult<()> {
         app_code: "BASIC".to_string(),
         app_name: "Basic".to_string(),
         env: Environment::Local,
+        template_directory: "".to_string(),
     };
 
     // Configure & run server

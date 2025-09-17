@@ -126,6 +126,15 @@ impl Responder {
         Redirect::to(url).into_response()
     }
 
+    pub fn html(html: &str, status: StatusCode) -> Response {
+        Response::builder()
+            .status(status)
+            .header("Content-Type", "text/html")
+            .body(html.to_string())
+            .expect("response builder")
+            .into_response()
+    }
+
     fn make_response<T: Serialize>(data: T, status: StatusCode) -> Response {
         Response::builder()
             .status(status)

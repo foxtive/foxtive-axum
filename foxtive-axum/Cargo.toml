@@ -11,6 +11,7 @@ authors = ["ahmard"]
 cors = ["tower-http/cors"]
 static = ["tower-http/fs"]
 validator = ["dep:validator"]
+templating = ["foxtive/templating"]
 
 [dependencies]
 futures = { workspace = true }
@@ -31,6 +32,7 @@ validator = { version = "0.20.0", features = ["derive"], optional = true }
 [[example]]
 name = "basic"
 path = "examples/basic.rs"
+required-features = []
 
 [[example]]
 name = "shutdown-signal"

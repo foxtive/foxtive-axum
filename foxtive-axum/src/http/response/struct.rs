@@ -1,6 +1,6 @@
 use crate::contracts::ResponseCodeContract;
 use crate::enums::response_code::ResponseCode;
-use crate::helpers::responder::Responder;
+use crate::http::responder::Responder;
 use crate::http::HttpResult;
 use crate::http::response::ext::StructResponseExt;
 use axum::response::Response;

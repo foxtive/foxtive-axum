@@ -1,5 +1,6 @@
 use crate::contracts::ResponseCodeContract;
 use crate::http::HttpResult;
+use axum::http::StatusCode;
 use axum::response::Response;
 
 pub trait ResultResponseExt {
@@ -10,6 +11,12 @@ pub trait ResultResponseExt {
 
 pub trait AppMessageExt {
     fn respond(self) -> HttpResult;
+}
+
+pub trait HtmlResponderExt {
+    fn respond(self) -> HttpResult;
+
+    fn respond_status(self, status: StatusCode) -> HttpResult;
 }
 
 pub trait ResponderExt {
