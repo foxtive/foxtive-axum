@@ -1,7 +1,7 @@
 use crate::contracts::ResponseCodeContract;
 use crate::enums::response_code::ResponseCode;
-use crate::http::responder::Responder;
 use crate::http::HttpResult;
+use crate::http::responder::Responder;
 use crate::http::response::ext::StructResponseExt;
 use axum::response::Response;
 use serde::Serialize;

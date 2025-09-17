@@ -1,15 +1,15 @@
-use crate::enums::response_code::ResponseCode;
-use crate::http::responder::Responder;
-use crate::http::HttpResult;
 use crate::FoxtiveAxumState;
+use crate::enums::response_code::ResponseCode;
+use crate::http::HttpResult;
+use crate::http::responder::Responder;
+use axum::Router;
 use axum::body::Body;
 use axum::http::{HeaderValue, Request};
 use axum::response::{IntoResponse, Response};
-use axum::Router;
 use foxtive::Error;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tower::{service_fn, ServiceBuilder};
+use tower::{ServiceBuilder, service_fn};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
@@ -46,7 +46,7 @@ async fn fallback_404(req: Request<Body>) -> Result<Response<Body>, Infallible> 
     #[cfg(feature = "static")]
     {
         use crate::http::static_file::{is_url_a_file, resolve_static_file_path};
-        use crate::{FoxtiveAxumExt, FOXTIVE_AXUM};
+        use crate::{FOXTIVE_AXUM, FoxtiveAxumExt};
 
         let uri = req.uri().path();
         let static_file_dir = &FOXTIVE_AXUM.app().static_file_dir;

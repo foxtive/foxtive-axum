@@ -1,9 +1,9 @@
+use crate::http::HttpResult;
 use crate::http::responder::Responder;
 use crate::http::response::ViewContext;
-use crate::http::HttpResult;
 use axum::http::StatusCode;
-use foxtive::prelude::AppStateExt;
 use foxtive::FOXTIVE;
+use foxtive::prelude::AppStateExt;
 
 pub struct View;
 

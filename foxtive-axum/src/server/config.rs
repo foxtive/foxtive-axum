@@ -1,9 +1,9 @@
-use crate::{server, FoxtiveAxumState};
-use axum::http::{HeaderName, HeaderValue, Method};
+use crate::{FoxtiveAxumState, server};
 use axum::Router;
+use axum::http::{HeaderName, HeaderValue, Method};
 use foxtive::results::AppResult;
-use foxtive::setup::trace::Tracing;
 use foxtive::setup::FoxtiveSetup;
+use foxtive::setup::trace::Tracing;
 use futures::future::BoxFuture;
 use std::future::Future;
 use std::pin::Pin;
