@@ -1,6 +1,10 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.5.1 (2025-09-17)
+* feat(server): adjust setup to be able to collect client ip address
+* fix(http): auto handle JointError to allow propagating blocking error in handler
+
 ### 0.5.0 (2025-09-17)
 * bump(foxtive): to version 0.18.1
 * feat(static): add safe resolver for mounted static dir paths
