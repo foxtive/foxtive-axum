@@ -41,7 +41,7 @@ pub mod helpers {
     use crate::contracts::ResponseCodeContract;
     use crate::enums::response_code::ResponseCode;
     use crate::error::HttpError;
-    use crate::helpers::responder::Responder;
+    use crate::http::responder::Responder;
     use axum::http::StatusCode;
     use axum::response::Response;
     use foxtive::prelude::AppMessage;

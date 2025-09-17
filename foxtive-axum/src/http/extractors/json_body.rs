@@ -1,4 +1,4 @@
-use crate::helpers::responder::Responder;
+use crate::http::responder::Responder;
 use axum::extract::{FromRequest, Request};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};

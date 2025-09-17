@@ -1,10 +1,11 @@
-use crate::{FoxtiveAxumState, server};
-use axum::Router;
+use crate::{server, FoxtiveAxumState};
 use axum::http::{HeaderName, HeaderValue, Method};
+use axum::Router;
 use foxtive::results::AppResult;
-use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
+use foxtive::setup::FoxtiveSetup;
 use futures::future::BoxFuture;
+use std::ffi::OsStr;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -55,6 +56,9 @@ pub struct Server {
     #[cfg(feature = "static")]
     pub(crate) static_config: StaticFileConfig,
 
+    #[cfg(feature = "templating")]
+    pub(crate) template_directory: String,
+
     /// whether the app bootstrap has started
     pub(crate) has_started_bootstrap: bool,
 
@@ -66,6 +70,10 @@ pub struct Server {
 
     /// list of allowed CORS headers
     pub(crate) allowed_headers: Vec<HeaderName>,
+
+    /// list of allowed static media extensions
+    #[cfg(feature = "static")]
+    pub(crate) allowed_static_media_extensions: Option<Vec<String>>,
 }
 
 impl Server {
@@ -84,6 +92,8 @@ impl Server {
             foxtive_setup: setup,
             #[cfg(feature = "static")]
             static_config: StaticFileConfig::default(),
+            #[cfg(feature = "templating")]
+            template_directory: "resources/templates".to_string(),
             has_started_bootstrap: false,
             router: Router::new(),
             allowed_origins: vec![],
@@ -93,12 +103,20 @@ impl Server {
             on_started: None,
             on_shutdown: None,
             bootstrap: None,
+            #[cfg(feature = "static")]
+            allowed_static_media_extensions: None,
         }
     }
 
     #[cfg(feature = "static")]
     pub fn create_with_static(setup: FoxtiveSetup, config: StaticFileConfig) -> Server {
         Self::new(setup).static_config(config)
+    }
+
+    #[cfg(feature = "static")]
+    pub fn static_media_extensions(mut self, extensions: Vec<String>) -> Self {
+        self.allowed_static_media_extensions = Some(extensions);
+        self
     }
 
     pub fn host(mut self, host: impl Into<String>) -> Self {
@@ -224,6 +242,12 @@ impl Server {
     #[cfg(feature = "static")]
     pub fn static_config(mut self, static_config: StaticFileConfig) -> Self {
         self.static_config = static_config;
+        self
+    }
+
+    #[cfg(feature = "templating")]
+    pub fn template_directory<D: AsRef<OsStr> + ?Sized>(mut self, dir: &D) -> Self {
+        self.template_directory = dir.as_ref().to_os_string().into_string().unwrap();
         self
     }
 

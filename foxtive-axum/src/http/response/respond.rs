@@ -1,11 +1,13 @@
+use axum::http::StatusCode;
 use crate::contracts::ResponseCodeContract;
 use crate::enums::response_code::ResponseCode;
 use crate::error::HttpError;
 use crate::http::HttpResult;
-use crate::http::response::ext::{ResponderExt, ResultResponseExt};
+use crate::http::response::ext::{HtmlResponderExt, ResponderExt, ResultResponseExt};
 use foxtive::prelude::AppResult;
 use serde::Serialize;
 use tokio::task::JoinError;
+use crate::http::responder::Responder;
 
 impl<T> ResponderExt for AppResult<T>
 where
@@ -49,6 +51,17 @@ where
         }
     }
 }
+
+impl HtmlResponderExt for &str {
+    fn respond(self) -> HttpResult {
+        Ok(Responder::html(self, StatusCode::OK))
+    }
+
+    fn respond_status(self, status: StatusCode) -> HttpResult {
+        Ok(Responder::html(self, status))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,6 +1,10 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.5.0 (2025-09-17)
+* bump(foxtive): to version 0.18.1
+* feat(static): add safe resolver for mounted static dir paths
+
 ### 0.4.0 (2025-08-14)
 * refactor(foxtive): avoid panics
 * bump(foxtive): to version 0.17.0

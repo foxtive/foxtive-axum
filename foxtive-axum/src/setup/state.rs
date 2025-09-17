@@ -11,6 +11,11 @@ pub struct FoxtiveAxumState {
 
     /// list of allowed methods
     pub allowed_methods: Vec<Method>,
+
+    pub static_file_dir: Option<String>,
+
+    #[cfg(feature = "static")]
+    pub allowed_static_media_extensions: Vec<String>,
 }
 
 impl Debug for FoxtiveAxumState {

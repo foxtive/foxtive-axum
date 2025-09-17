@@ -64,7 +64,7 @@ pub(crate) mod helpers {
         #[cfg(feature = "validator")]
         use crate::enums::response_code::ResponseCode;
         #[cfg(feature = "validator")]
-        use crate::helpers::responder::Responder;
+        use crate::http::responder::Responder;
 
         match err {
             HttpError::AppMessage(m) => make_response(&m.clone().ae()),

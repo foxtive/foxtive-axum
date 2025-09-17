@@ -6,7 +6,7 @@ use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
 use foxtive_axum::enums::response_code::ResponseCode;
 use foxtive_axum::error::HttpError;
-use foxtive_axum::helpers::responder::Responder;
+use foxtive_axum::http::responder::Responder;
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::extractors::ByteBody;
 use foxtive_axum::http::response::ext::StructResponseExt;
@@ -27,6 +27,7 @@ async fn main() -> AppResult<()> {
         app_code: "BYTE".to_string(),
         app_name: "Byte Extractor".to_string(),
         env: Environment::Local,
+        template_directory: "".to_string(),
     };
 
     // Configure & run server
