@@ -1,6 +1,9 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.6.0 (2025-10-12)
+* bump(foxtive): to version 0.19.1
+
 ### 0.5.1 (2025-09-17)
 * feat(server): adjust setup to be able to collect client ip address
 * fix(http): auto handle JointError to allow propagating blocking error in handler

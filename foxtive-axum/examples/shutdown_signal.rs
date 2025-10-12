@@ -23,6 +23,7 @@ async fn main() -> AppResult<()> {
         app_code: "SHUTDOWN_SIGNAL".to_string(),
         app_name: "Shutdown Signal".to_string(),
         env: Environment::Local,
+        #[cfg(feature = "templating")]
         template_directory: "".to_string(),
     };
 
