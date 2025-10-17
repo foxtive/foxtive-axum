@@ -4,7 +4,6 @@ use foxtive::Environment;
 use foxtive::results::AppResult;
 use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
-use tokio::signal;
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::server::Server;
@@ -21,8 +20,8 @@ async fn main() -> AppResult<()> {
         private_key: "".to_string(),
         public_key: "".to_string(),
         app_key: "".to_string(),
-        app_code: "SHUTDOWN_SIGNAL".to_string(),
-        app_name: "Shutdown Signal".to_string(),
+        app_code: "ON_SHUTDOWN".to_string(),
+        app_name: "Shutdown Event Handler".to_string(),
         env: Environment::Local,
         #[cfg(feature = "templating")]
         template_directory: "".to_string(),
@@ -35,38 +34,13 @@ async fn main() -> AppResult<()> {
         .router(app)
         .tracing(Tracing::minimal())
         .on_started(async { info!("Server started successfully") })
-        .shutdown_signal(shutdown_signal())
+        .on_shutdown(async {
+            warn!("Server shutting down ...");
+        })
         .run()
         .await
 }
 
 async fn handler() -> HttpResult {
     "Hello, World!".respond()
-}
-
-
-async fn shutdown_signal() {
-    // Wait for SIGINT (Ctrl+C) or SIGTERM (in k8s or docker)
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        use tokio::signal::unix::{signal, SignalKind};
-        let mut term = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
-        term.recv().await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>(); // No-op on non-Unix
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    warn!("[Custom] Signal received. Shutting down...");
 }
