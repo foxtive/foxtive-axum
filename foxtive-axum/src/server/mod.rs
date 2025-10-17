@@ -66,7 +66,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         .expect("Couldn't bind to the address");
 
     if let Some(on_server_started) = config.on_started {
-        on_server_started();
+        on_server_started.await;
     }
 
     axum::serve(

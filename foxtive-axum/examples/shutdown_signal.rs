@@ -33,7 +33,7 @@ async fn main() -> AppResult<()> {
         .port(3000)
         .router(app)
         .tracing(Tracing::minimal())
-        .on_started(|| info!("Server started successfully"))
+        .on_started(async { info!("Server started successfully") })
         .on_shutdown(async {
             warn!("Server shutting down ...");
         })

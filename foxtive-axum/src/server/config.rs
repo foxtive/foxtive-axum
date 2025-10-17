@@ -28,7 +28,7 @@ pub struct Server {
 
     pub(crate) bootstrap: Option<BootstrapFn>,
 
-    pub(crate) on_started: Option<Box<dyn FnOnce()>>,
+    pub(crate) on_started: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
 
     pub(crate) on_shutdown: Option<ShutdownSignalHandler>,
 
@@ -251,8 +251,11 @@ impl Server {
     }
 
     /// Provide a function to execute after the server starts
-    pub fn on_started<TB: FnOnce() + 'static>(mut self, func: TB) -> Self {
-        self.on_started = Some(Box::new(func));
+    pub fn on_started<F>(mut self, handler: F) -> Self
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.on_started = Some(Box::pin(handler));
         self
     }
 
