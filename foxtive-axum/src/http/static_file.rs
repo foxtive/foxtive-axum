@@ -1,4 +1,4 @@
-use crate::{FoxtiveAxumExt, FOXTIVE_AXUM};
+use crate::{FOXTIVE_AXUM, FoxtiveAxumExt};
 use foxtive::helpers::FileExtHelper;
 use std::path::{Path, PathBuf};
 

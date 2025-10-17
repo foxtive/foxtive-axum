@@ -1,13 +1,13 @@
-use axum::http::StatusCode;
 use crate::contracts::ResponseCodeContract;
 use crate::enums::response_code::ResponseCode;
 use crate::error::HttpError;
 use crate::http::HttpResult;
+use crate::http::responder::Responder;
 use crate::http::response::ext::{HtmlResponderExt, ResponderExt, ResultResponseExt};
+use axum::http::StatusCode;
 use foxtive::prelude::AppResult;
 use serde::Serialize;
 use tokio::task::JoinError;
-use crate::http::responder::Responder;
 
 impl<T> ResponderExt for AppResult<T>
 where

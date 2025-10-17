@@ -3,8 +3,8 @@ use axum::response::Response;
 
 pub mod extractors;
 pub(crate) mod kernel;
-pub mod response;
 pub mod responder;
+pub mod response;
 #[cfg(feature = "static")]
 pub(crate) mod static_file;
 
