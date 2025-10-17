@@ -1,6 +1,10 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.7.0 (2025-10-17)
+* bump(axum): to version 1.48.0
+* refactor(server): on_started now accepts async fn instead of blocking fn 
+
 ### 0.6.0 (2025-10-12)
 * bump(foxtive): to version 0.19.1
 

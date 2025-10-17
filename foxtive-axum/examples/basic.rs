@@ -37,7 +37,7 @@ async fn main() -> AppResult<()> {
             info!("Bootstrapping application ...");
             Ok(())
         })
-        .on_started(|| info!("Server started successfully"))
+        .on_started(async { info!("Server started successfully") })
         .run()
         .await
 }
