@@ -32,6 +32,8 @@ pub struct Server {
 
     pub(crate) on_shutdown: Option<ShutdownSignalHandler>,
 
+    pub(crate) shutdown_signal: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
+
     pub(crate) host: String,
     pub(crate) port: u16,
     pub(crate) workers: usize,
@@ -104,6 +106,7 @@ impl Server {
             bootstrap: None,
             #[cfg(feature = "static")]
             allowed_static_media_extensions: None,
+            shutdown_signal: None,
         }
     }
 
@@ -259,6 +262,16 @@ impl Server {
         self
     }
 
+    /// Sets a custom shutdown handler to be called when the application is shutting down.
+    ///
+    /// This method allows you to provide a future that will be awaited during shutdown.
+    /// It is typically used to perform cleanup tasks like closing database connections,
+    /// flushing logs, or other async teardown operations.
+    ///
+    /// **Note:** If a custom `shutdown_signal` is also provided using [`shutdown_signal`],
+    /// that will take precedence over this handler, and this `on_shutdown` handler will
+    /// **not** be executed.
+    ///
     pub fn on_shutdown<F>(mut self, func: F) -> Self
     where
         F: Future<Output = ()> + Send + 'static,
@@ -266,6 +279,21 @@ impl Server {
         self.on_shutdown = Some(Box::pin(func));
         self
     }
+
+    /// Sets a custom shutdown signal handler that determines when the application should begin shutting down.
+    ///
+    /// This method allows you to provide a future that, when resolved, triggers the application shutdown.
+    /// It is typically used to listen for signals like `Ctrl+C` or system termination requests (`SIGTERM`).
+    ///
+    /// If this shutdown signal is provided, it will override any handler set using [`on_shutdown`].
+    pub fn shutdown_signal<F>(mut self, func: F) -> Self
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.shutdown_signal = Some(Box::pin(func));
+        self
+    }
+
 
     /// Provide a function to execute before the server starts
     pub fn bootstrap<F, Fut>(mut self, func: F) -> Self

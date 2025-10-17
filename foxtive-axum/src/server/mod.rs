@@ -1,17 +1,17 @@
 mod config;
 
-use std::net::SocketAddr;
 pub use config::Server;
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
+use std::net::SocketAddr;
 
 use crate::http::kernel;
 use crate::server::config::ShutdownSignalHandler;
-use crate::setup::{FoxtiveAxumSetup, make_state};
-use foxtive::Error;
+use crate::setup::{make_state, FoxtiveAxumSetup};
 use foxtive::prelude::AppResult;
 use foxtive::setup::load_environment_variables;
 use foxtive::setup::trace::Tracing;
+use foxtive::Error;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
@@ -69,10 +69,16 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         on_server_started.await;
     }
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(shutdown_signal(config.on_shutdown))
-        .await
-        .map_err(Error::from)
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(match config.shutdown_signal {
+        None => Box::pin(shutdown_signal(config.on_shutdown)),
+        Some(signal) => signal,
+    })
+    .await
+    .map_err(Error::from)
 }
 
 async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>) {
@@ -85,7 +91,7 @@ async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>) {
 
     #[cfg(unix)]
     let terminate = async {
-        use tokio::signal::unix::{SignalKind, signal};
+        use tokio::signal::unix::{signal, SignalKind};
         let mut term = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
         term.recv().await;
     };
