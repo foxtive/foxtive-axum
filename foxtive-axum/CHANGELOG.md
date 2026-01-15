@@ -1,6 +1,9 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.8.0 (2026-01-15)
+* bump(foxtive): to version 0.20.0
+
 ### 0.7.1 (2025-10-17)
 * feat(server): custom shutdown signal
 * refactor(server): on_started now accepts async fn instead of blocking fn 
