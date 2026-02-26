@@ -1,6 +1,9 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.10.0 (2026-02-26)
+* bump(foxtive): to version 0.23.0
+
 ### 0.9.0 (2026-02-05)
 * bump(foxtive): to version 0.22.0
 
