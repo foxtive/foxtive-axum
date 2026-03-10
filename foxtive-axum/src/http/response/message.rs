@@ -60,7 +60,8 @@ mod tests {
 
     #[test]
     fn test_app_message_result_respond() {
-        let msg: Result<AppMessage, Error> = Ok(AppMessage::internal_server_error("Internal Server Error"));
+        let msg: Result<AppMessage, Error> =
+            Ok(AppMessage::internal_server_error("Internal Server Error"));
         let result = msg.respond();
         assert!(result.is_err());
     }

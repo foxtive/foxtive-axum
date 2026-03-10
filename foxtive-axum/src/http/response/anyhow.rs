@@ -77,10 +77,7 @@ pub mod helpers {
                     Some(err) => {
                         error!("Error: {err}");
                         // We can't send JSON error as a response, we don't know what may be leaked
-                        make_json_response(
-                            "Data processing error",
-                            StatusCode::BAD_REQUEST,
-                        )
+                        make_json_response("Data processing error", StatusCode::BAD_REQUEST)
                     }
                     None => {
                         error!("Error: {err}");
