@@ -27,7 +27,7 @@ impl<T: Serialize> OptionResultResponseExt<T> for AppResult<T> {
         match self {
             Ok(_) => false,
             Err(e) => match e.downcast_ref::<AppMessage>() {
-                Some(message) => matches!(message, AppMessage::EntityNotFound(..)),
+                Some(message) => matches!(message, AppMessage::NotFound(..)),
                 None => false,
             },
         }
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_result_response_send_result_ok() {
-        let result: Result<AppMessage, AppMessage> = Ok(AppMessage::EntityNotFound("".to_string()));
+        let result: Result<AppMessage, AppMessage> = Ok(AppMessage::not_found(""));
 
         let response = result.send_result_msg(ResponseCode::NotFound, "nfd");
         match response {
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_result_response_send_result_err() {
-        let err = AppMessage::EntityNotFound("app".to_string());
+        let err = AppMessage::not_found("app");
         let result: Result<AppMessage, AppMessage> = Err(err);
 
         let response = result.send_result_msg(ResponseCode::NotFound, "fail");
@@ -104,15 +104,15 @@ mod tests {
 
     #[test]
     fn test_option_result_response_is_empty() {
-        let result: AppResult<()> = AppMessage::EntityNotFound("".to_string()).into_result(); // Assuming this represents an entity not found error
+        let result: AppResult<()> = AppMessage::not_found("").into_result(); // Assuming this represents an entity not found error
 
         assert!(result.is_empty());
     }
 
     #[test]
     fn test_option_result_response_is_error_or_empty() {
-        let result_empty: AppResult<()> = AppMessage::EntityNotFound("".to_string()).into_result(); // Assuming this represents an entity not found error
-        let result_error: AppResult<()> = AppMessage::EntityNotFound("".to_string()).into_result();
+        let result_empty: AppResult<()> = AppMessage::not_found("").into_result(); // Assuming this represents an entity not found error
+        let result_error: AppResult<()> = AppMessage::not_found("").into_result();
         let result_ok: AppResult<()> = Ok(());
 
         assert!(result_empty.is_error_or_empty());
@@ -122,14 +122,14 @@ mod tests {
 
     #[test]
     fn test_option_result_response_send_response_error_or_empty() {
-        let result: AppResult<()> = AppMessage::InternalServerError.into_result();
+        let result: AppResult<()> = AppMessage::internal_server_error("Internal Server Error").into_result();
 
         let response = result.send_response(ResponseCode::Ok, "fail");
         match response {
             Err(e) => {
                 assert_eq!(
                     e.status_code(),
-                    AppMessage::InternalServerError.status_code()
+                    AppMessage::internal_server_error("Internal Server Error").status_code()
                 );
             }
             Ok(_) => panic!("Expected Err, but got Ok"),

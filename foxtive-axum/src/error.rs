@@ -79,7 +79,7 @@ pub(crate) mod helpers {
             }
             _ => {
                 error!("Error: {err}");
-                make_response(&foxtive::Error::from(AppMessage::InternalServerError))
+                make_response(&foxtive::Error::from(AppMessage::internal_server_error("")))
             }
         }
     }
@@ -93,14 +93,14 @@ mod tests {
 
     #[test]
     fn test_app_error() {
-        let error = HttpError::AppError(Error::from(AppMessage::InternalServerError));
+        let error = HttpError::AppError(Error::from(AppMessage::internal_server_error("")));
         let app_error = make_http_error_response(&error);
         assert_eq!(app_error.status(), 500);
     }
 
     #[test]
     fn test_app_message() {
-        let error = HttpError::AppMessage(AppMessage::InternalServerError);
+        let error = HttpError::AppMessage(AppMessage::internal_server_error(""));
         let app_error = make_http_error_response(&error);
         assert_eq!(app_error.status(), 500);
     }

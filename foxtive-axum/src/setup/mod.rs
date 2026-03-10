@@ -27,7 +27,7 @@ pub(crate) async fn make_state(setup: FoxtiveAxumSetup) -> AppResult<Arc<Foxtive
     foxtive::setup::make_state(setup.foxtive_setup).await?;
 
     FOXTIVE_AXUM.set(app.clone()).map_err(|_| {
-        AppMessage::InternalServerErrorMessage("failed to set up foxtive-axum").ae()
+        AppMessage::internal_server_error("failed to set up foxtive-axum").ae()
     })?;
 
     Ok(Arc::new(app))
