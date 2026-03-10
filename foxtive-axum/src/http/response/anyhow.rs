@@ -69,7 +69,7 @@ pub mod helpers {
         match err.downcast_ref::<AppMessage>() {
             Some(msg) => {
                 msg.log();
-                make_json_response(msg.message(), status)
+                make_json_response(&msg.message(), status)
             }
             None => match err.downcast_ref::<HttpError>() {
                 Some(err) => crate::error::helpers::make_http_error_response(err),
@@ -78,14 +78,14 @@ pub mod helpers {
                         error!("Error: {err}");
                         // We can't send JSON error as a response, we don't know what may be leaked
                         make_json_response(
-                            "Data processing error".to_string(),
+                            "Data processing error",
                             StatusCode::BAD_REQUEST,
                         )
                     }
                     None => {
                         error!("Error: {err}");
                         make_json_response(
-                            AppMessage::InternalServerError.message(),
+                            &AppMessage::internal_server_error("Internal Server Error").message(),
                             StatusCode::INTERNAL_SERVER_ERROR,
                         )
                     }
@@ -94,8 +94,8 @@ pub mod helpers {
         }
     }
 
-    pub fn make_json_response(body: String, status: StatusCode) -> Response {
+    pub fn make_json_response(body: &str, status: StatusCode) -> Response {
         let code = ResponseCode::from_status(status);
-        Responder::message(&body, code)
+        Responder::message(body, code)
     }
 }

@@ -46,28 +46,28 @@ mod tests {
 
     #[test]
     fn test_app_message_respond_success() {
-        let msg = AppMessage::SuccessMessage("Yes");
+        let msg = AppMessage::success("Yes");
         let result = msg.respond();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_app_message_respond_error() {
-        let msg = AppMessage::InternalServerError;
+        let msg = AppMessage::internal_server_error("Internal Server Error");
         let result = msg.respond();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_app_message_result_respond() {
-        let msg: Result<AppMessage, Error> = Ok(AppMessage::InternalServerError);
+        let msg: Result<AppMessage, Error> = Ok(AppMessage::internal_server_error("Internal Server Error"));
         let result = msg.respond();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_app_message_result_error_respond() {
-        let msg = Err(AppMessage::InternalServerError);
+        let msg = Err(AppMessage::internal_server_error("Internal Server Error"));
         let result = msg.respond();
         assert!(result.is_err());
     }
