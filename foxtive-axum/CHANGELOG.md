@@ -1,6 +1,9 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.12.0 (2026-03-11)
+* bump(foxtive): to version 0.25.1
+
 ### 0.11.1 (2026-03-11)
 * feat(responder): .respond_msg() now accepts Into<String> for easier usage
 
