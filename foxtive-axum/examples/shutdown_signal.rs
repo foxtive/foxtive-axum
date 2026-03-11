@@ -4,10 +4,10 @@ use foxtive::Environment;
 use foxtive::results::AppResult;
 use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
-use tokio::signal;
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::server::Server;
+use tokio::signal;
 use tracing::{info, warn};
 
 #[tokio::main]
@@ -44,7 +44,6 @@ async fn handler() -> HttpResult {
     "Hello, World!".respond()
 }
 
-
 async fn shutdown_signal() {
     // Wait for SIGINT (Ctrl+C) or SIGTERM (in k8s or docker)
     let ctrl_c = async {
@@ -55,7 +54,7 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
-        use tokio::signal::unix::{signal, SignalKind};
+        use tokio::signal::unix::{SignalKind, signal};
         let mut term = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
         term.recv().await;
     };

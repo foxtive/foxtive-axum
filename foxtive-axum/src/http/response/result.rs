@@ -41,7 +41,11 @@ impl<T: Serialize> OptionResultResponseExt<T> for AppResult<T> {
         self.is_error() || self.is_empty()
     }
 
-    fn send_response<C: ResponseCodeContract, M: Into<String>>(self, code: C, msg: M) -> HttpResult {
+    fn send_response<C: ResponseCodeContract, M: Into<String>>(
+        self,
+        code: C,
+        msg: M,
+    ) -> HttpResult {
         Ok(Responder::send_msg(
             self.map_err(HttpError::AppError)?,
             code,
@@ -58,7 +62,11 @@ impl<T: Serialize> ResultResponseExt for AppResult<T> {
         }
     }
 
-    fn send_result_msg<C: ResponseCodeContract, M: Into<String>>(self, code: C, msg: M) -> HttpResult {
+    fn send_result_msg<C: ResponseCodeContract, M: Into<String>>(
+        self,
+        code: C,
+        msg: M,
+    ) -> HttpResult {
         match self {
             Ok(data) => Ok(Responder::send_msg(data, code, msg)),
             Err(err) => Err(HttpError::AppError(err)),
@@ -122,7 +130,8 @@ mod tests {
 
     #[test]
     fn test_option_result_response_send_response_error_or_empty() {
-        let result: AppResult<()> = AppMessage::internal_server_error("Internal Server Error").into_result();
+        let result: AppResult<()> =
+            AppMessage::internal_server_error("Internal Server Error").into_result();
 
         let response = result.send_response(ResponseCode::Ok, "fail");
         match response {

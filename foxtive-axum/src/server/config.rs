@@ -294,7 +294,6 @@ impl Server {
         self
     }
 
-
     /// Provide a function to execute before the server starts
     pub fn bootstrap<F, Fut>(mut self, func: F) -> Self
     where

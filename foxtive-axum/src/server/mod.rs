@@ -7,11 +7,11 @@ use std::net::SocketAddr;
 
 use crate::http::kernel;
 use crate::server::config::ShutdownSignalHandler;
-use crate::setup::{make_state, FoxtiveAxumSetup};
+use crate::setup::{FoxtiveAxumSetup, make_state};
+use foxtive::Error;
 use foxtive::prelude::AppResult;
 use foxtive::setup::load_environment_variables;
 use foxtive::setup::trace::Tracing;
-use foxtive::Error;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
@@ -91,7 +91,7 @@ async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>) {
 
     #[cfg(unix)]
     let terminate = async {
-        use tokio::signal::unix::{signal, SignalKind};
+        use tokio::signal::unix::{SignalKind, signal};
         let mut term = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
         term.recv().await;
     };
