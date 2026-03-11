@@ -13,11 +13,11 @@ impl<T> ResponderExt for AppResult<T>
 where
     T: Sized + Serialize,
 {
-    fn respond_code<C: ResponseCodeContract>(self, msg: &str, code: C) -> HttpResult {
+    fn respond_code<C: ResponseCodeContract, M: Into<String>>(self, msg: M, code: C) -> HttpResult {
         self.send_result_msg(code, msg)
     }
 
-    fn respond_msg(self, msg: &str) -> HttpResult {
+    fn respond_msg(self, msg: impl Into<String>) -> HttpResult {
         self.send_result_msg(ResponseCode::Ok, msg)
     }
 
@@ -30,14 +30,14 @@ impl<T> ResponderExt for Result<AppResult<T>, JoinError>
 where
     T: Sized + Serialize,
 {
-    fn respond_code<C: ResponseCodeContract>(self, msg: &str, code: C) -> HttpResult {
+    fn respond_code<C: ResponseCodeContract, M: Into<String>>(self, msg: M, code: C) -> HttpResult {
         match self {
             Ok(val) => val.send_result_msg(code, msg),
             Err(err) => Err(HttpError::AppError(err.into())),
         }
     }
 
-    fn respond_msg(self, msg: &str) -> HttpResult {
+    fn respond_msg(self, msg: impl Into<String>) -> HttpResult {
         match self {
             Ok(val) => val.send_result_msg(ResponseCode::Ok, msg),
             Err(err) => Err(HttpError::AppError(err.into())),

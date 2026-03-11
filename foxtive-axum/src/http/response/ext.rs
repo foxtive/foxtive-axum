@@ -6,7 +6,11 @@ use axum::response::Response;
 pub trait ResultResponseExt {
     fn send_result<C: ResponseCodeContract>(self, code: C) -> HttpResult;
 
-    fn send_result_msg<C: ResponseCodeContract>(self, code: C, msg: &str) -> HttpResult;
+    fn send_result_msg<C: ResponseCodeContract, M: Into<String>>(
+        self,
+        code: C,
+        msg: M,
+    ) -> HttpResult;
 }
 
 pub trait AppMessageExt {
@@ -20,9 +24,9 @@ pub trait HtmlResponderExt {
 }
 
 pub trait ResponderExt {
-    fn respond_code<C: ResponseCodeContract>(self, msg: &str, code: C) -> HttpResult;
+    fn respond_code<C: ResponseCodeContract, M: Into<String>>(self, msg: M, code: C) -> HttpResult;
 
-    fn respond_msg(self, suc: &str) -> HttpResult;
+    fn respond_msg(self, suc: impl Into<String>) -> HttpResult;
 
     fn respond(self) -> HttpResult;
 }
@@ -30,9 +34,9 @@ pub trait ResponderExt {
 pub trait StructResponseExt: Sized {
     fn into_response(self) -> Response;
 
-    fn respond_code<C: ResponseCodeContract>(self, code: C, msg: &str) -> HttpResult;
+    fn respond_code<C: ResponseCodeContract, M: Into<String>>(self, code: C, msg: M) -> HttpResult;
 
-    fn respond_msg(self, msg: &str) -> HttpResult;
+    fn respond_msg(self, msg: impl Into<String>) -> HttpResult;
 
     fn respond(self) -> HttpResult;
 }
@@ -44,7 +48,8 @@ pub trait OptionResultResponseExt<T> {
 
     fn is_error_or_empty(&self) -> bool;
 
-    fn send_response<C: ResponseCodeContract>(self, code: C, msg: &str) -> HttpResult;
+    fn send_response<C: ResponseCodeContract, M: Into<String>>(self, code: C, msg: M)
+    -> HttpResult;
 }
 
 pub trait IntoHttpResultExt {

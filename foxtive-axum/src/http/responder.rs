@@ -44,13 +44,13 @@ impl<T: Serialize> Display for JsonResponse<T> {
 
 #[allow(dead_code)]
 impl Responder {
-    pub fn send_msg<C, D>(data: D, code: C, msg: &str) -> Response
+    pub fn send_msg<C, D>(data: D, code: C, msg: impl Into<String>) -> Response
     where
         C: ResponseCodeContract,
         D: Serialize,
     {
         Self::respond(
-            JsonMessage::make(data, code.code(), code.success(), Some(msg.to_string())),
+            JsonMessage::make(data, code.code(), code.success(), Some(msg.into())),
             code.status(),
         )
     }

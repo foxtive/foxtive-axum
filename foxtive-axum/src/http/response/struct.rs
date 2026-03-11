@@ -11,11 +11,11 @@ impl<T: Serialize> StructResponseExt for T {
         Responder::send(self, ResponseCode::Ok)
     }
 
-    fn respond_code<C: ResponseCodeContract>(self, code: C, msg: &str) -> HttpResult {
+    fn respond_code<C: ResponseCodeContract, M: Into<String>>(self, code: C, msg: M) -> HttpResult {
         Ok(Responder::send_msg(self, code, msg))
     }
 
-    fn respond_msg(self, msg: &str) -> HttpResult {
+    fn respond_msg(self, msg: impl Into<String>) -> HttpResult {
         Ok(Responder::send_msg(self, ResponseCode::Ok, msg))
     }
 
