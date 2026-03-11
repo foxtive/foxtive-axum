@@ -347,9 +347,9 @@ dependencies = [
 
 [[package]]
 name = "foxtive"
-version = "0.24.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af81c4ad791ba8bbab9ae7952ab11ef70b530f30caf63b238dee0ecc2b59ffd0"
+checksum = "e68af0808a004f316e0ff970ff591c7ce5cf92efd94018d6ae70b06c17f0d4f8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -369,7 +369,7 @@ dependencies = [
 
 [[package]]
 name = "foxtive-axum"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "axum",
  "foxtive",

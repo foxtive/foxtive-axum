@@ -70,7 +70,7 @@ pub(crate) mod helpers {
         use crate::http::responder::Responder;
 
         match err {
-            HttpError::AppMessage(m) => make_response(&m.clone().ae()),
+            HttpError::AppMessage(m) => make_response(&m.clone().into_anyhow()),
             HttpError::AppError(e) => make_response(e),
             #[cfg(feature = "validator")]
             HttpError::ValidationError(e) => {

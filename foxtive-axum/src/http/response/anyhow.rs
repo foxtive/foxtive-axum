@@ -24,7 +24,7 @@ impl From<HttpError> for ResponseError {
     fn from(value: HttpError) -> Self {
         match value {
             HttpError::AppError(e) => ResponseError::new(e),
-            HttpError::AppMessage(e) => ResponseError::new(e.ae()),
+            HttpError::AppMessage(e) => ResponseError::new(e.into_anyhow()),
             HttpError::Std(e) => ResponseError::new(Error::from_boxed(e)),
             _ => ResponseError::new(foxtive::Error::from(value)),
         }
