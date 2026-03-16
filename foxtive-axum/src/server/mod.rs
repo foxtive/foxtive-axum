@@ -17,8 +17,8 @@ use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
 
 pub(crate) fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
-    foxtive::setup::trace::init_tracing(config)?;
     load_environment_variables(service);
+    foxtive::setup::trace::init_tracing(config)?;
     Ok(())
 }
 
@@ -29,7 +29,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
     }
 
     #[allow(unused_mut)]
-    let mut app = config.router.layer(TraceLayer::new_for_http());
+    let mut app = config.router;
 
     #[allow(unused_mut)]
     let mut static_file_dir: Option<String> = None;

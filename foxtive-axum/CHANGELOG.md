@@ -1,6 +1,10 @@
 # Foxtive Axum Changelog
 Foxtive Axum changelog file 
 
+### 0.12.1 (2026-03-1f)
+* fix(logger): ensure env is loaded before initializing logger
+* bump(foxtive): to version 0.25.4
+
 ### 0.12.0 (2026-03-11)
 * bump(foxtive): to version 0.25.1
 
