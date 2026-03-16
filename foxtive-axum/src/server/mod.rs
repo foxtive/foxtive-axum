@@ -13,7 +13,6 @@ use foxtive::prelude::AppResult;
 use foxtive::setup::load_environment_variables;
 use foxtive::setup::trace::Tracing;
 use tokio::signal;
-use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
 
 pub(crate) fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
