@@ -21,6 +21,106 @@ pub struct StaticFileConfig {
     pub dir: String,
 }
 
+/// Configuration for individual HTTP body extractor types.
+///
+/// This struct controls size limits and other settings for specific body types.
+#[derive(Clone, Debug)]
+pub struct BodyExtractorConfig {
+    /// Maximum allowed size for request bodies in bytes.
+    ///
+    /// Requests exceeding this limit will be rejected with a payload too large error.
+    pub limit: usize,
+}
+
+impl BodyExtractorConfig {
+    /// Create a new BodyExtractorConfig with the specified limit
+    pub fn new(limit: usize) -> Self {
+        Self { limit }
+    }
+}
+
+impl Default for BodyExtractorConfig {
+    fn default() -> Self {
+        Self {
+            // Default: 2 MB (2 * 1024 * 1024 bytes)
+            limit: 2 * 1024 * 1024,
+        }
+    }
+}
+
+/// Configuration for HTTP request body parsing.
+///
+/// This struct controls how different body types are processed, including size limits
+/// for JSON, String, and Byte extractors.
+///
+/// # Default Settings
+/// - JSON body limit: 2 MB
+/// - String body limit: 2 MB
+/// - Byte body limit: 10 MB
+///
+/// # Example
+/// ```rust
+/// use foxtive_axum::server::{HttpBodyConfig, BodyExtractorConfig};
+///
+/// // Use default configuration
+/// let config = HttpBodyConfig::default();
+///
+/// // Custom size limits
+/// let config = HttpBodyConfig::default()
+///     .json_config(BodyExtractorConfig::new(1024 * 1024)) // 1 MB for JSON
+///     .string_config(BodyExtractorConfig::new(512 * 1024)) // 512 KB for strings
+///     .byte_config(BodyExtractorConfig::new(5 * 1024 * 1024)); // 5 MB for bytes
+/// ```
+#[derive(Clone, Debug)]
+pub struct HttpBodyConfig {
+    /// Configuration for JSON body extraction
+    pub json: BodyExtractorConfig,
+    
+    /// Configuration for String body extraction
+    pub string: BodyExtractorConfig,
+    
+    /// Configuration for Byte body extraction
+    pub byte: BodyExtractorConfig,
+}
+
+impl Default for HttpBodyConfig {
+    fn default() -> Self {
+        Self {
+            json: BodyExtractorConfig::default(),
+            string: BodyExtractorConfig::default(),
+            byte: BodyExtractorConfig {
+                // Default: 10 MB for binary data
+                limit: 10 * 1024 * 1024,
+            },
+        }
+    }
+}
+
+impl HttpBodyConfig {
+    /// Create a new HttpBodyConfig with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the JSON body extractor configuration
+    pub fn json_config(mut self, config: BodyExtractorConfig) -> Self {
+        self.json = config;
+        self
+    }
+
+    /// Set the String body extractor configuration
+    pub fn string_config(mut self, config: BodyExtractorConfig) -> Self {
+        self.string = config;
+        self
+    }
+
+    /// Set the Byte body extractor configuration
+    pub fn byte_config(mut self, config: BodyExtractorConfig) -> Self {
+        self.byte = config;
+        self
+    }
+}
+
 pub struct Server {
     pub(crate) foxtive_setup: FoxtiveSetup,
 
@@ -49,6 +149,8 @@ pub struct Server {
     pub(crate) keep_alive: Duration,
 
     pub(crate) backlog: i32,
+
+    pub(crate) body_config: Option<HttpBodyConfig>,
 
     pub(crate) app: String,
 
@@ -89,6 +191,7 @@ impl Server {
             client_disconnect: Duration::from_secs(5),
             keep_alive: Duration::from_secs(5),
             backlog: 2048,
+            body_config: None,
             app: "foxtive".to_string(),
             foxtive_setup: setup,
             #[cfg(feature = "static")]
@@ -108,6 +211,47 @@ impl Server {
             allowed_static_media_extensions: None,
             shutdown_signal: None,
         }
+    }
+
+    /// Set the HTTP body extraction configuration.
+    ///
+    /// This allows you to configure size limits for JSON, String, and Byte extractors.
+    ///
+    /// # Example
+    /// ```rust
+    /// use foxtive_axum::server::{Server, HttpBodyConfig, BodyExtractorConfig};
+    /// use foxtive::setup::FoxtiveSetup;
+    /// use foxtive::Environment;
+    ///
+    /// let setup = FoxtiveSetup {
+    ///     env_prefix: "APP".to_string(),
+    ///     private_key: "".to_string(),
+    ///     public_key: "".to_string(),
+    ///     app_key: "".to_string(),
+    ///     app_code: "TEST".to_string(),
+    ///     app_name: "Test".to_string(),
+    ///     env: Environment::Local,
+    ///     #[cfg(feature = "templating")]
+    ///     template_directory: "".to_string(),
+    /// };
+    ///
+    /// let config = HttpBodyConfig::default()
+    ///     .json_config(BodyExtractorConfig::new(1024 * 1024)); // 1 MB
+    ///
+    /// let server = Server::new(setup).body_config(config);
+    /// ```
+    pub fn body_config(mut self, body_config: HttpBodyConfig) -> Self {
+        self.body_config = Some(body_config);
+        self
+    }
+
+    /// Deprecated: Use body_config() instead
+    #[deprecated(since = "0.13.0", note = "Use body_config() instead")]
+    pub fn json_config(mut self, json_config: BodyExtractorConfig) -> Self {
+        let mut body_config = self.body_config.unwrap_or_default();
+        body_config.json = json_config;
+        self.body_config = Some(body_config);
+        self
     }
 
     #[cfg(feature = "static")]

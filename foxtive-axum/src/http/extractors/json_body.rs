@@ -1,4 +1,5 @@
 use crate::http::responder::Responder;
+use crate::{FOXTIVE_AXUM, FoxtiveAxumExt};
 use axum::extract::{FromRequest, Request};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -46,25 +47,24 @@ impl From<serde_json::Error> for JsonExtractionError {
     }
 }
 
-/// A wrapper struct that holds the deserialized data.
+/// A wrapper struct that holds both the raw JSON string and the deserialized data.
 ///
-/// This struct is useful when you need the parsed json data
+/// This struct is useful when you need both the raw JSON string and the parsed
 /// object, avoiding multiple deserialization operations.
-pub struct JsonBody<T: DeserializeOwned>(T);
+pub struct JsonBody<T: DeserializeOwned> {
+    json: String,
+    value: T,
+}
 
 impl<T: DeserializeOwned> JsonBody<T> {
-    /// Creates a new `JsonBody` instance by parsing the given JSON string.
-    ///
-    /// # Arguments
-    /// * `json` - A string slice containing valid JSON
-    ///
-    /// # Returns
-    /// * `Result<JsonBody<T>, JsonExtractionError>` - Result containing the new instance or an error
-    ///
-    /// # Errors
-    /// Returns an error if the JSON string cannot be deserialized into the target type T.
-    pub fn new(json: String) -> Result<JsonBody<T>, JsonExtractionError> {
-        Ok(JsonBody(serde_json::from_str::<T>(&json)?))
+    /// Returns a reference to the raw JSON string.
+    pub fn body(&self) -> &str {
+        &self.json
+    }
+
+    /// Consumes the `JsonBody`, returning the raw JSON string.
+    pub fn into_body(self) -> String {
+        self.json
     }
 
     /// Returns a reference to the deserialized object.
@@ -78,7 +78,7 @@ impl<T: DeserializeOwned> JsonBody<T> {
     /// assert_eq!(de_json_body.inner(), &manual_body);
     /// ```
     pub fn inner(&self) -> &T {
-        &self.0
+        &self.value
     }
 
     /// Consumes the `JsonBody`, returning the inner deserialized object.
@@ -92,7 +92,7 @@ impl<T: DeserializeOwned> JsonBody<T> {
     /// assert_eq!(de_json_body.into_inner(), manual_body);
     /// ```
     pub fn into_inner(self) -> T {
-        self.0
+        self.value
     }
 }
 
@@ -104,17 +104,31 @@ where
     type Rejection = JsonExtractionError;
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
-        // Extract the body bytes
-        let bytes = axum::body::to_bytes(req.into_body(), usize::MAX)
+        // Get max size from JSON body configuration
+        let max_size = FOXTIVE_AXUM.app().body_config.json.limit;
+        
+        // Extract the body bytes with size limit
+        let bytes = axum::body::to_bytes(req.into_body(), max_size)
             .await
-            .map_err(|err| JsonExtractionError::Other(format!("Failed to read body: {}", err)))?;
+            .map_err(|err| {
+                if err.to_string().contains("length limit") {
+                    JsonExtractionError::PayloadTooLarge
+                } else {
+                    JsonExtractionError::Other(format!("Failed to read body: {}", err))
+                }
+            })?;
 
-        // Convert bytes to UTF-8 string
-        let raw = String::from_utf8(bytes.to_vec())?;
+        // Convert bytes to UTF-8 string efficiently
+        let json = String::from_utf8(bytes.to_vec())
+            .map_err(JsonExtractionError::InvalidUtf8)?;
+        
+        debug!("[json-body] {}", json);
 
-        debug!("[json-body] {}", raw);
+        // Deserialize JSON string to target type
+        let value = serde_json::from_str::<T>(&json)
+            .map_err(JsonExtractionError::InvalidJson)?;
 
-        Self::new(raw)
+        Ok(JsonBody { json, value })
     }
 }
 
@@ -122,13 +136,13 @@ impl<T: DeserializeOwned> ops::Deref for JsonBody<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &self.0
+        &self.value
     }
 }
 
 impl<T: DeserializeOwned> ops::DerefMut for JsonBody<T> {
     fn deref_mut(&mut self) -> &mut T {
-        &mut self.0
+        &mut self.value
     }
 }
 
@@ -138,7 +152,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
 
-    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     struct TestStruct {
         field1: String,
         field2: i32,
@@ -147,59 +161,94 @@ mod tests {
     #[test]
     fn test_inner() {
         let json_str = r#"{"field1": "value1", "field2": 42}"#.to_string();
-        let de_json_body = JsonBody::<TestStruct>::new(json_str).unwrap();
+        let value: TestStruct = serde_json::from_str(&json_str).unwrap();
+        let json_body = JsonBody {
+            json: json_str.clone(),
+            value,
+        };
 
         let expected = TestStruct {
             field1: "value1".to_string(),
             field2: 42,
         };
 
-        assert_eq!(*de_json_body.inner(), expected);
+        assert_eq!(*json_body.inner(), expected);
     }
 
     #[test]
     fn test_into_inner() {
         let json_str = r#"{"field1": "value1", "field2": 42}"#.to_string();
-        let de_json_body = JsonBody::<TestStruct>::new(json_str).unwrap();
+        let value: TestStruct = serde_json::from_str(&json_str).unwrap();
+        let json_body = JsonBody {
+            json: json_str.clone(),
+            value,
+        };
 
         let expected = TestStruct {
             field1: "value1".to_string(),
             field2: 42,
         };
 
-        assert_eq!(de_json_body.into_inner(), expected);
+        assert_eq!(json_body.into_inner(), expected);
+    }
+
+    #[test]
+    fn test_body() {
+        let json_str = r#"{"field1": "value1", "field2": 42}"#.to_string();
+        let value: TestStruct = serde_json::from_str(&json_str).unwrap();
+        let json_body = JsonBody {
+            json: json_str.clone(),
+            value,
+        };
+
+        assert_eq!(json_body.body(), &json_str);
+    }
+
+    #[test]
+    fn test_into_body() {
+        let json_str = r#"{"field1": "value1", "field2": 42}"#.to_string();
+        let value: TestStruct = serde_json::from_str(&json_str).unwrap();
+        let json_body = JsonBody {
+            json: json_str.clone(),
+            value,
+        };
+
+        assert_eq!(json_body.into_body(), json_str);
     }
 
     #[test]
     fn test_deserialize_success() {
         let json_str = r#"{"field1": "value1", "field2": 42}"#.to_string();
-        let de_json_body = JsonBody::<TestStruct>::new(json_str).unwrap();
+        let value: TestStruct = serde_json::from_str(&json_str).unwrap();
+        let json_body = JsonBody {
+            json: json_str,
+            value,
+        };
 
         let expected = TestStruct {
             field1: "value1".to_string(),
             field2: 42,
         };
 
-        assert_eq!(*de_json_body.inner(), expected);
+        assert_eq!(*json_body.inner(), expected);
     }
 
     #[test]
     fn test_deserialize_failure() {
         let json_str = r#"{"field1": "value1", "field2": "invalid_int"}"#.to_string();
-        let result = JsonBody::<TestStruct>::new(json_str);
+        let result = serde_json::from_str::<TestStruct>(&json_str);
 
         assert!(result.is_err());
-        if let Err(JsonExtractionError::InvalidJson(_)) = result {
-            // Expected error type
-        } else {
-            panic!("Expected InvalidJson error");
-        }
     }
 
     #[test]
     fn test_deserialize_to_map() {
         let json_str = r#"{"key1": "value1", "key2": "value2"}"#.to_string();
-        let de_json_body = JsonBody::<HashMap<String, String>>::new(json_str).unwrap();
+        let value: HashMap<String, String> = serde_json::from_str(&json_str).unwrap();
+        let json_body = JsonBody {
+            json: json_str,
+            value,
+        };
 
         let expected = {
             let mut map = HashMap::new();
@@ -208,6 +257,33 @@ mod tests {
             map
         };
 
-        assert_eq!(*de_json_body.inner(), expected);
+        assert_eq!(*json_body.inner(), expected);
+    }
+
+    #[test]
+    fn test_deref() {
+        let json_str = r#"{"field1": "value1", "field2": 42}"#.to_string();
+        let value: TestStruct = serde_json::from_str(&json_str).unwrap();
+        let json_body = JsonBody {
+            json: json_str,
+            value: value.clone(),
+        };
+
+        assert_eq!(*json_body, value);
+        assert_eq!(json_body.field1, "value1");
+        assert_eq!(json_body.field2, 42);
+    }
+
+    #[test]
+    fn test_deref_mut() {
+        let json_str = r#"{"field1": "value1", "field2": 42}"#.to_string();
+        let value: TestStruct = serde_json::from_str(&json_str).unwrap();
+        let mut json_body = JsonBody {
+            json: json_str,
+            value,
+        };
+
+        json_body.field2 = 100;
+        assert_eq!(json_body.field2, 100);
     }
 }

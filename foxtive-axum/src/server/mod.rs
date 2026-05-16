@@ -1,6 +1,7 @@
 mod config;
 
-pub use config::Server;
+pub use config::{Server, HttpBodyConfig, BodyExtractorConfig};
+#[deprecated(since = "0.13.0", note = "Use BodyExtractorConfig instead")]
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
 use std::net::SocketAddr;
@@ -48,6 +49,7 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         allowed_methods: config.allowed_methods,
         allowed_headers: config.allowed_headers,
         foxtive_setup: config.foxtive_setup,
+        body_config: config.body_config.unwrap_or_default(),
         #[cfg(feature = "static")]
         allowed_static_media_extensions: config.allowed_static_media_extensions,
     })
