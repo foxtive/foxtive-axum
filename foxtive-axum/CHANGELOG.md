@@ -3,8 +3,7 @@ Foxtive Axum changelog file
 
 ### 0.13.0 (2026-05-16)
 * feat(http): refactor extractors with configurable size limits and improved memory management
-* feat(server): introduce HttpBodyConfig for flexible JSON, String, and Byte extractor configuration
-* feat(server): add BodyExtractorConfig for per-extractor size limit control
+* feat(server): introduce BodyConfig for unified JSON, String, and Byte extractor configuration
 * refactor(extractors): JsonBody now stores both raw JSON and deserialized data
 * refactor(extractors): all extractors use configurable size limits instead of usize::MAX
 * refactor(extractors): improved error handling with proper PayloadTooLarge detection

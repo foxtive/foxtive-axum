@@ -107,7 +107,7 @@ where
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         // Get max size from String body configuration
-        let max_size = FOXTIVE_AXUM.app().body_config.string.limit;
+        let max_size = FOXTIVE_AXUM.app().body_config.string_limit;
         
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)
