@@ -10,6 +10,6 @@ futures = "0.3.32"
 serde = { version = "1.0.228", default-features = false }
 serde_json = { version = "1.0.149", default-features = false }
 thiserror = { version = "2.0.18", default-features = false }
-axum = { version = "0.8.8", default-features = false }
-foxtive = { version = "0.25.5", default-features = false }
-tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros"] }
+axum = { version = "0.8.9", default-features = false }
+foxtive = { version = "0.26.1", default-features = false }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros"] }

@@ -15,6 +15,7 @@ pub struct FoxtiveAxumSetup {
     pub allowed_headers: Vec<HeaderName>,
     pub foxtive_setup: FoxtiveSetup,
     pub(crate) static_file_dir: Option<String>,
+    pub(crate) body_config: crate::server::HttpBodyConfig,
     #[cfg(feature = "static")]
     pub(crate) allowed_static_media_extensions: Option<Vec<String>>,
 }
@@ -39,6 +40,7 @@ async fn create_state(setup: &FoxtiveAxumSetup) -> FoxtiveAxumState {
         allowed_methods: setup.allowed_methods.clone(),
         allowed_headers: setup.allowed_headers.clone(),
         static_file_dir: setup.static_file_dir.clone(),
+        body_config: setup.body_config.clone(),
         #[cfg(feature = "static")]
         allowed_static_media_extensions: setup.allowed_static_media_extensions.clone().unwrap_or(
             crate::http::static_file::DEFAULT_STATIC_MEDIA_EXTENSIONS

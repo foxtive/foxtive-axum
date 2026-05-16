@@ -1,3 +1,4 @@
+use crate::{FOXTIVE_AXUM, FoxtiveAxumExt};
 use axum::extract::{FromRequest, Request};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -105,16 +106,27 @@ where
     type Rejection = StringExtractionError;
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
-        // Extract the body bytes
-        let bytes = axum::body::to_bytes(req.into_body(), usize::MAX)
+        // Get max size from String body configuration
+        let max_size = FOXTIVE_AXUM.app().body_config.string.limit;
+        
+        // Extract the body bytes with size limit
+        let bytes = axum::body::to_bytes(req.into_body(), max_size)
             .await
-            .map_err(|err| StringExtractionError::Other(format!("Failed to read body: {}", err)))?;
+            .map_err(|err| {
+                if err.to_string().contains("length limit") {
+                    StringExtractionError::PayloadTooLarge
+                } else {
+                    StringExtractionError::Other(format!("Failed to read body: {}", err))
+                }
+            })?;
 
-        // Convert bytes to UTF-8 string
-        let raw = String::from_utf8(bytes.to_vec())?;
-        debug!("[string-body] {}", raw);
+        // Convert bytes to UTF-8 string efficiently
+        let body = String::from_utf8(bytes.to_vec())
+            .map_err(StringExtractionError::InvalidUtf8)?;
+        
+        debug!("[string-body] {}", body);
 
-        Ok(Self { body: raw })
+        Ok(Self { body })
     }
 }
 
