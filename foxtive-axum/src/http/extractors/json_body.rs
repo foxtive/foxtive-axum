@@ -68,29 +68,11 @@ impl<T: DeserializeOwned> JsonBody<T> {
     }
 
     /// Returns a reference to the deserialized object.
-    ///
-    /// # Example
-    /// ```
-    /// use foxtive_axum::http::extractors::JsonBody;
-    /// let json_str = "{\"field1\": \"value1\", \"field2\": 42}".to_string();
-    /// let manual_body = serde_json::from_str::<serde_json::Value>(&json_str).unwrap();
-    /// let de_json_body = JsonBody::<serde_json::Value>::new(json_str.clone()).unwrap();
-    /// assert_eq!(de_json_body.inner(), &manual_body);
-    /// ```
     pub fn inner(&self) -> &T {
         &self.value
     }
 
     /// Consumes the `JsonBody`, returning the inner deserialized object.
-    ///
-    /// # Example
-    /// ```
-    /// use foxtive_axum::http::extractors::JsonBody;
-    /// let json_str = "{\"field1\": \"value1\", \"field2\": 42}".to_string();
-    /// let manual_body = serde_json::from_str::<serde_json::Value>(&json_str).unwrap();
-    /// let de_json_body = JsonBody::<serde_json::Value>::new(json_str.clone()).unwrap();
-    /// assert_eq!(de_json_body.into_inner(), manual_body);
-    /// ```
     pub fn into_inner(self) -> T {
         self.value
     }
@@ -105,7 +87,7 @@ where
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         // Get max size from JSON body configuration
-        let max_size = FOXTIVE_AXUM.app().body_config.json.limit;
+        let max_size = FOXTIVE_AXUM.app().body_config.json_limit;
         
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)

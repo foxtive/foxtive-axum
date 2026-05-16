@@ -1,6 +1,6 @@
 use axum::http::{HeaderName, HeaderValue, Method};
 use std::fmt::{Debug, Formatter};
-use crate::server::HttpBodyConfig;
+use crate::server::BodyConfig;
 
 #[derive(Clone)]
 pub struct FoxtiveAxumState {
@@ -16,7 +16,7 @@ pub struct FoxtiveAxumState {
     pub static_file_dir: Option<String>,
 
     /// Built-in HTTP body extraction configuration
-    pub body_config: HttpBodyConfig,
+    pub body_config: BodyConfig,
 
     #[cfg(feature = "static")]
     pub allowed_static_media_extensions: Vec<String>,

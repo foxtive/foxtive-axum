@@ -21,37 +21,9 @@ pub struct StaticFileConfig {
     pub dir: String,
 }
 
-/// Configuration for individual HTTP body extractor types.
+/// Configuration for HTTP request body extraction.
 ///
-/// This struct controls size limits and other settings for specific body types.
-#[derive(Clone, Debug)]
-pub struct BodyExtractorConfig {
-    /// Maximum allowed size for request bodies in bytes.
-    ///
-    /// Requests exceeding this limit will be rejected with a payload too large error.
-    pub limit: usize,
-}
-
-impl BodyExtractorConfig {
-    /// Create a new BodyExtractorConfig with the specified limit
-    pub fn new(limit: usize) -> Self {
-        Self { limit }
-    }
-}
-
-impl Default for BodyExtractorConfig {
-    fn default() -> Self {
-        Self {
-            // Default: 2 MB (2 * 1024 * 1024 bytes)
-            limit: 2 * 1024 * 1024,
-        }
-    }
-}
-
-/// Configuration for HTTP request body parsing.
-///
-/// This struct controls how different body types are processed, including size limits
-/// for JSON, String, and Byte extractors.
+/// This struct controls size limits for different body types (JSON, String, and Byte).
 ///
 /// # Default Settings
 /// - JSON body limit: 2 MB
@@ -60,64 +32,56 @@ impl Default for BodyExtractorConfig {
 ///
 /// # Example
 /// ```rust
-/// use foxtive_axum::server::{HttpBodyConfig, BodyExtractorConfig};
+/// use foxtive_axum::server::BodyConfig;
 ///
 /// // Use default configuration
-/// let config = HttpBodyConfig::default();
+/// let config = BodyConfig::default();
 ///
-/// // Custom size limits
-/// let config = HttpBodyConfig::default()
-///     .json_config(BodyExtractorConfig::new(1024 * 1024)) // 1 MB for JSON
-///     .string_config(BodyExtractorConfig::new(512 * 1024)) // 512 KB for strings
-///     .byte_config(BodyExtractorConfig::new(5 * 1024 * 1024)); // 5 MB for bytes
+/// // Custom limits for different body types
+/// let config = BodyConfig::default()
+///     .json_limit(1024 * 1024)      // 1 MB for JSON
+///     .string_limit(512 * 1024)     // 512 KB for strings
+///     .byte_limit(5 * 1024 * 1024); // 5 MB for bytes
 /// ```
 #[derive(Clone, Debug)]
-pub struct HttpBodyConfig {
-    /// Configuration for JSON body extraction
-    pub json: BodyExtractorConfig,
+pub struct BodyConfig {
+    /// Maximum allowed size for JSON request bodies in bytes
+    pub json_limit: usize,
     
-    /// Configuration for String body extraction
-    pub string: BodyExtractorConfig,
+    /// Maximum allowed size for String request bodies in bytes
+    pub string_limit: usize,
     
-    /// Configuration for Byte body extraction
-    pub byte: BodyExtractorConfig,
+    /// Maximum allowed size for Byte request bodies in bytes
+    pub byte_limit: usize,
 }
 
-impl Default for HttpBodyConfig {
+impl BodyConfig {
+    /// Set the JSON body size limit in bytes
+    pub fn json_limit(mut self, limit: usize) -> Self {
+        self.json_limit = limit;
+        self
+    }
+
+    /// Set the String body size limit in bytes
+    pub fn string_limit(mut self, limit: usize) -> Self {
+        self.string_limit = limit;
+        self
+    }
+
+    /// Set the Byte body size limit in bytes
+    pub fn byte_limit(mut self, limit: usize) -> Self {
+        self.byte_limit = limit;
+        self
+    }
+}
+
+impl Default for BodyConfig {
     fn default() -> Self {
         Self {
-            json: BodyExtractorConfig::default(),
-            string: BodyExtractorConfig::default(),
-            byte: BodyExtractorConfig {
-                // Default: 10 MB for binary data
-                limit: 10 * 1024 * 1024,
-            },
+            json_limit: 2 * 1024 * 1024,    // 2 MB
+            string_limit: 2 * 1024 * 1024,  // 2 MB
+            byte_limit: 10 * 1024 * 1024,   // 10 MB
         }
-    }
-}
-
-impl HttpBodyConfig {
-    /// Create a new HttpBodyConfig with default settings
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the JSON body extractor configuration
-    pub fn json_config(mut self, config: BodyExtractorConfig) -> Self {
-        self.json = config;
-        self
-    }
-
-    /// Set the String body extractor configuration
-    pub fn string_config(mut self, config: BodyExtractorConfig) -> Self {
-        self.string = config;
-        self
-    }
-
-    /// Set the Byte body extractor configuration
-    pub fn byte_config(mut self, config: BodyExtractorConfig) -> Self {
-        self.byte = config;
-        self
     }
 }
 
@@ -150,7 +114,7 @@ pub struct Server {
 
     pub(crate) backlog: i32,
 
-    pub(crate) body_config: Option<HttpBodyConfig>,
+    pub(crate) body_config: Option<BodyConfig>,
 
     pub(crate) app: String,
 
@@ -219,7 +183,7 @@ impl Server {
     ///
     /// # Example
     /// ```rust
-    /// use foxtive_axum::server::{Server, HttpBodyConfig, BodyExtractorConfig};
+    /// use foxtive_axum::server::{Server, BodyConfig};
     /// use foxtive::setup::FoxtiveSetup;
     /// use foxtive::Environment;
     ///
@@ -235,21 +199,21 @@ impl Server {
     ///     template_directory: "".to_string(),
     /// };
     ///
-    /// let config = HttpBodyConfig::default()
-    ///     .json_config(BodyExtractorConfig::new(1024 * 1024)); // 1 MB
+    /// let config = BodyConfig::default()
+    ///     .json_limit(1024 * 1024); // 1 MB
     ///
     /// let server = Server::new(setup).body_config(config);
     /// ```
-    pub fn body_config(mut self, body_config: HttpBodyConfig) -> Self {
+    pub fn body_config(mut self, body_config: BodyConfig) -> Self {
         self.body_config = Some(body_config);
         self
     }
 
     /// Deprecated: Use body_config() instead
     #[deprecated(since = "0.13.0", note = "Use body_config() instead")]
-    pub fn json_config(mut self, json_config: BodyExtractorConfig) -> Self {
+    pub fn json_config(mut self, limit: usize) -> Self {
         let mut body_config = self.body_config.unwrap_or_default();
-        body_config.json = json_config;
+        body_config.json_limit = limit;
         self.body_config = Some(body_config);
         self
     }

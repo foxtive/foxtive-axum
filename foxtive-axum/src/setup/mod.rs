@@ -15,7 +15,7 @@ pub struct FoxtiveAxumSetup {
     pub allowed_headers: Vec<HeaderName>,
     pub foxtive_setup: FoxtiveSetup,
     pub(crate) static_file_dir: Option<String>,
-    pub(crate) body_config: crate::server::HttpBodyConfig,
+    pub(crate) body_config: crate::server::BodyConfig,
     #[cfg(feature = "static")]
     pub(crate) allowed_static_media_extensions: Option<Vec<String>>,
 }

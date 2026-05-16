@@ -1,7 +1,6 @@
 mod config;
 
-pub use config::{Server, HttpBodyConfig, BodyExtractorConfig};
-#[deprecated(since = "0.13.0", note = "Use BodyExtractorConfig instead")]
+pub use config::{Server, BodyConfig};
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
 use std::net::SocketAddr;
