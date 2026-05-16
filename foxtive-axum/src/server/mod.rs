@@ -1,8 +1,8 @@
 mod config;
 
-pub use config::{Server, BodyConfig};
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
+pub use config::{BodyConfig, Server};
 use std::net::SocketAddr;
 
 use crate::http::kernel;

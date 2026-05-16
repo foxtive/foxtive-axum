@@ -108,7 +108,7 @@ where
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         // Get max size from String body configuration
         let max_size = FOXTIVE_AXUM.app().body_config.string_limit;
-        
+
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)
             .await
@@ -121,9 +121,8 @@ where
             })?;
 
         // Convert bytes to UTF-8 string efficiently
-        let body = String::from_utf8(bytes.to_vec())
-            .map_err(StringExtractionError::InvalidUtf8)?;
-        
+        let body = String::from_utf8(bytes.to_vec()).map_err(StringExtractionError::InvalidUtf8)?;
+
         debug!("[string-body] {}", body);
 
         Ok(Self { body })

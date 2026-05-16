@@ -88,7 +88,7 @@ where
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         // Get max size from JSON body configuration
         let max_size = FOXTIVE_AXUM.app().body_config.json_limit;
-        
+
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)
             .await
@@ -101,14 +101,12 @@ where
             })?;
 
         // Convert bytes to UTF-8 string efficiently
-        let json = String::from_utf8(bytes.to_vec())
-            .map_err(JsonExtractionError::InvalidUtf8)?;
-        
+        let json = String::from_utf8(bytes.to_vec()).map_err(JsonExtractionError::InvalidUtf8)?;
+
         debug!("[json-body] {}", json);
 
         // Deserialize JSON string to target type
-        let value = serde_json::from_str::<T>(&json)
-            .map_err(JsonExtractionError::InvalidJson)?;
+        let value = serde_json::from_str::<T>(&json).map_err(JsonExtractionError::InvalidJson)?;
 
         Ok(JsonBody { json, value })
     }

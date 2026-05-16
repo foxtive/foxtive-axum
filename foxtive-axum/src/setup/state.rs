@@ -1,6 +1,6 @@
+use crate::server::BodyConfig;
 use axum::http::{HeaderName, HeaderValue, Method};
 use std::fmt::{Debug, Formatter};
-use crate::server::BodyConfig;
 
 #[derive(Clone)]
 pub struct FoxtiveAxumState {
