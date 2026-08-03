@@ -1,8 +1,10 @@
-use crate::{FoxtiveAxumState, server};
+//! Server configuration types and lifecycle management.
+
+use crate::server;
 use axum::Router;
 use axum::http::{HeaderName, HeaderValue, Method};
+use foxtive::App;
 use foxtive::results::AppResult;
-use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
 use futures::future::BoxFuture;
 use std::future::Future;
@@ -10,15 +12,82 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
+/// Type alias for a boxed future that resolves when the server should shut down.
 pub type ShutdownSignalHandler = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 
-pub type BootstrapFn =
-    Box<dyn FnOnce(Arc<FoxtiveAxumState>) -> BoxFuture<'static, AppResult<()>> + Send>;
+/// Type alias for the bootstrap function called before the server starts.
+pub type BootstrapFn = Box<dyn FnOnce(Arc<App>) -> BoxFuture<'static, AppResult<()>> + Send>;
 
+/// Configuration for serving static files from a directory.
 #[cfg(feature = "static")]
 pub struct StaticFileConfig {
+    /// The URL path prefix for static files (e.g. "/static").
     pub path: String,
+    /// The filesystem directory to serve files from (e.g. "./public").
     pub dir: String,
+}
+
+/// Configuration for rate limiting.
+///
+/// # Example
+/// ```rust
+/// use foxtive_axum::server::RateLimitConfig;
+///
+/// // Allow 100 requests per minute
+/// let config = RateLimitConfig::per_minute(100);
+///
+/// // Allow 10 requests per second
+/// let config = RateLimitConfig::per_second(10);
+///
+/// // Custom: 5 requests every 2 seconds
+/// let config = RateLimitConfig::custom(5, 2);
+/// ```
+#[cfg(feature = "rate-limit")]
+#[derive(Clone, Debug)]
+pub struct RateLimitConfig {
+    /// Maximum number of requests allowed in a burst
+    pub burst_size: u32,
+    /// Time period in seconds for rate replenishment
+    pub period_seconds: u32,
+}
+
+#[cfg(feature = "rate-limit")]
+impl RateLimitConfig {
+    /// Create a rate limit configuration allowing N requests per second
+    pub fn per_second(burst_size: u32) -> Self {
+        Self {
+            burst_size,
+            period_seconds: 1,
+        }
+    }
+
+    /// Create a rate limit configuration allowing N requests per minute
+    pub fn per_minute(burst_size: u32) -> Self {
+        Self {
+            burst_size,
+            period_seconds: 60,
+        }
+    }
+
+    /// Create a rate limit configuration allowing N requests per hour
+    pub fn per_hour(burst_size: u32) -> Self {
+        Self {
+            burst_size,
+            period_seconds: 3600,
+        }
+    }
+
+    /// Create custom rate limit configuration
+    /// 
+    /// # Arguments
+    /// * `burst_size` - Maximum requests allowed in a burst
+    /// * `period_seconds` - Time in seconds for rate replenishment
+    pub fn custom(burst_size: u32, period_seconds: u32) -> Self {
+        Self {
+            burst_size,
+            period_seconds,
+        }
+    }
 }
 
 /// Configuration for HTTP request body extraction.
@@ -85,40 +154,83 @@ impl Default for BodyConfig {
     }
 }
 
+/// The HTTP server configuration.
+///
+/// Use the builder pattern to configure host, port, routing, middleware,
+/// and lifecycle hooks, then call [`Server::run`] to start serving.
+///
+/// # Example
+/// ```rust,no_run
+/// use foxtive_axum::server::Server;
+/// use foxtive::App;
+/// use std::sync::Arc;
+///
+/// # async fn example() -> foxtive::results::AppResult<()> {
+/// let app = App::builder("MyApp", "MYAPP").build().await?;
+///
+/// Server::new(app)
+///     .host("127.0.0.1")
+///     .port(3000)
+///     .run()
+///     .await?;
+/// # Ok(())
+/// # }
+/// ```
 pub struct Server {
-    pub(crate) foxtive_setup: FoxtiveSetup,
+    /// The foxtive application instance (DI container).
+    pub(crate) app: Arc<App>,
 
+    /// The axum router containing user-defined routes.
     pub(crate) router: Router,
 
+    /// Optional bootstrap function called before the server starts.
     pub(crate) bootstrap: Option<BootstrapFn>,
 
+    /// Optional future executed after the server has started.
     pub(crate) on_started: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
 
+    /// Optional future executed during graceful shutdown.
     pub(crate) on_shutdown: Option<ShutdownSignalHandler>,
 
+    /// Optional custom shutdown signal (overrides default Ctrl+C / SIGTERM).
     pub(crate) shutdown_signal: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
 
+    /// The host address to bind to (default: "0.0.0.0").
     pub(crate) host: String,
+    /// The port to listen on (default: 8023).
     pub(crate) port: u16,
+    /// Number of worker threads (default: 2).
     pub(crate) workers: usize,
 
+    /// Maximum concurrent connections per worker (default: 25,000).
     pub(crate) max_connections: usize,
 
+    /// Maximum connection establishment rate (default: 256).
     pub(crate) max_connections_rate: usize,
 
+    /// Client request read timeout (default: 3s).
     pub(crate) client_timeout: Duration,
 
+    /// Client disconnect timeout (default: 5s).
     pub(crate) client_disconnect: Duration,
 
+    /// TCP keep-alive interval (default: 5s).
     pub(crate) keep_alive: Duration,
 
+    /// Maximum pending connection backlog (default: 2048).
     pub(crate) backlog: i32,
 
+    /// Body size limit configuration (applied via Extension layer).
     pub(crate) body_config: Option<BodyConfig>,
 
-    pub(crate) app: String,
+    /// Service name used for env loading and tracing.
+    pub(crate) service_name: String,
 
+    /// Optional tracing configuration.
     pub(crate) tracing_config: Option<Tracing>,
+
+    #[cfg(feature = "rate-limit")]
+    pub(crate) rate_limit_config: Option<RateLimitConfig>,
 
     #[cfg(feature = "static")]
     pub(crate) static_config: StaticFileConfig,
@@ -132,7 +244,7 @@ pub struct Server {
     /// list of allowed CORS origins
     pub(crate) allowed_origins: Vec<HeaderValue>,
 
-    /// list of allowed CORS origins
+    /// list of allowed CORS methods
     pub(crate) allowed_methods: Vec<Method>,
 
     /// list of allowed CORS headers
@@ -144,7 +256,8 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(setup: FoxtiveSetup) -> Server {
+    /// Create a new server with the given application instance.
+    pub fn new(app: Arc<App>) -> Server {
         Server {
             port: 8023,
             host: "0.0.0.0".to_string(),
@@ -156,8 +269,10 @@ impl Server {
             keep_alive: Duration::from_secs(5),
             backlog: 2048,
             body_config: None,
-            app: "foxtive".to_string(),
-            foxtive_setup: setup,
+            service_name: "foxtive".to_string(),
+            app,
+            #[cfg(feature = "rate-limit")]
+            rate_limit_config: None,
             #[cfg(feature = "static")]
             static_config: StaticFileConfig::default(),
             #[cfg(feature = "templating")]
@@ -177,6 +292,29 @@ impl Server {
         }
     }
 
+    /// Set the rate limiting configuration.
+    ///
+    /// This protects your API from abuse by limiting the number of requests
+    /// a client can make within a time period.
+    ///
+    /// # Example
+    /// ```rust
+    /// use foxtive_axum::server::{Server, RateLimitConfig};
+    /// use foxtive::App;
+    /// use std::sync::Arc;
+    ///
+    /// # async fn example(app: Arc<App>) {
+    /// // Allow 100 requests per minute
+    /// let server = Server::new(app)
+    ///     .rate_limit(RateLimitConfig::per_minute(100));
+    /// # }
+    /// ```
+    #[cfg(feature = "rate-limit")]
+    pub fn rate_limit(mut self, config: RateLimitConfig) -> Self {
+        self.rate_limit_config = Some(config);
+        self
+    }
+
     /// Set the HTTP body extraction configuration.
     ///
     /// This allows you to configure size limits for JSON, String, and Byte extractors.
@@ -184,25 +322,15 @@ impl Server {
     /// # Example
     /// ```rust
     /// use foxtive_axum::server::{Server, BodyConfig};
-    /// use foxtive::setup::FoxtiveSetup;
-    /// use foxtive::Environment;
+    /// use foxtive::App;
+    /// use std::sync::Arc;
     ///
-    /// let setup = FoxtiveSetup {
-    ///     env_prefix: "APP".to_string(),
-    ///     private_key: "".to_string(),
-    ///     public_key: "".to_string(),
-    ///     app_key: "".to_string(),
-    ///     app_code: "TEST".to_string(),
-    ///     app_name: "Test".to_string(),
-    ///     env: Environment::Local,
-    ///     #[cfg(feature = "templating")]
-    ///     template_directory: "".to_string(),
-    /// };
-    ///
+    /// # async fn example(app: Arc<App>) {
     /// let config = BodyConfig::default()
     ///     .json_limit(1024 * 1024); // 1 MB
     ///
-    /// let server = Server::new(setup).body_config(config);
+    /// let server = Server::new(app).body_config(config);
+    /// # }
     /// ```
     pub fn body_config(mut self, body_config: BodyConfig) -> Self {
         self.body_config = Some(body_config);
@@ -218,37 +346,44 @@ impl Server {
         self
     }
 
+    /// Create a server pre-configured with static file serving.
     #[cfg(feature = "static")]
-    pub fn create_with_static(setup: FoxtiveSetup, config: StaticFileConfig) -> Server {
-        Self::new(setup).static_config(config)
+    pub fn create_with_static(app: Arc<App>, config: StaticFileConfig) -> Server {
+        Self::new(app).static_config(config)
     }
 
+    /// Set the list of allowed static media file extensions.
     #[cfg(feature = "static")]
     pub fn static_media_extensions(mut self, extensions: Vec<String>) -> Self {
         self.allowed_static_media_extensions = Some(extensions);
         self
     }
 
+    /// Set the server host address.
     pub fn host(mut self, host: impl Into<String>) -> Self {
         self.host = host.into();
         self
     }
 
+    /// Set the server port.
     pub fn port(mut self, port: u16) -> Self {
         self.port = port;
         self
     }
 
-    pub fn app(mut self, app: &str) -> Self {
-        self.app = app.to_string();
+    /// Set the service name (used for env loading and tracing).
+    pub fn service_name(mut self, name: &str) -> Self {
+        self.service_name = name.to_string();
         self
     }
 
+    /// Set the axum router with application routes.
     pub fn router(mut self, router: Router) -> Self {
         self.router = router;
         self
     }
 
+    /// Set the tracing configuration.
     pub fn tracing(mut self, config: Tracing) -> Self {
         self.tracing_config = Some(config);
         self
@@ -334,27 +469,32 @@ impl Server {
         self
     }
 
+    /// Set the list of allowed CORS origins.
     pub fn allowed_origins(mut self, origins: Vec<HeaderValue>) -> Self {
         self.allowed_origins = origins;
         self
     }
 
+    /// Set the list of allowed CORS methods.
     pub fn allowed_methods(mut self, methods: Vec<Method>) -> Self {
         self.allowed_methods = methods;
         self
     }
 
+    /// Set the list of allowed CORS headers.
     pub fn allowed_headers(mut self, headers: Vec<HeaderName>) -> Self {
         self.allowed_headers = headers;
         self
     }
 
+    /// Set the static file serving configuration.
     #[cfg(feature = "static")]
     pub fn static_config(mut self, static_config: StaticFileConfig) -> Self {
         self.static_config = static_config;
         self
     }
 
+    /// Set the directory for server-side templates.
     #[cfg(feature = "templating")]
     pub fn template_directory<D: AsRef<std::ffi::OsStr> + ?Sized>(mut self, dir: &D) -> Self {
         self.template_directory = dir.as_ref().to_os_string().into_string().unwrap();
@@ -376,7 +516,7 @@ impl Server {
     /// It is typically used to perform cleanup tasks like closing database connections,
     /// flushing logs, or other async teardown operations.
     ///
-    /// **Note:** If a custom `shutdown_signal` is also provided using [`shutdown_signal`],
+    /// Note: If a custom `shutdown_signal` is also provided using [`shutdown_signal`],
     /// that will take precedence over this handler, and this `on_shutdown` handler will
     /// **not** be executed.
     ///
@@ -402,21 +542,26 @@ impl Server {
         self
     }
 
-    /// Provide a function to execute before the server starts
+    /// Provide a function to execute before the server starts.
+    ///
+    /// The function receives an `Arc<App>` which provides access to all
+    /// registered services, configuration, and lifecycle methods.
     pub fn bootstrap<F, Fut>(mut self, func: F) -> Self
     where
-        F: FnOnce(Arc<FoxtiveAxumState>) -> Fut + Send + 'static,
+        F: FnOnce(Arc<App>) -> Fut + Send + 'static,
         Fut: Future<Output = AppResult<()>> + Send + 'static,
     {
-        self.bootstrap = Some(Box::new(|state| Box::pin(func(state))));
+        self.bootstrap = Some(Box::new(|app| Box::pin(func(app))));
         self
     }
 
+    /// Mark whether the bootstrap has already been started externally.
     pub fn has_started_bootstrap(mut self, has_started_bootstrap: bool) -> Self {
         self.has_started_bootstrap = has_started_bootstrap;
         self
     }
 
+    /// Start the HTTP server and begin accepting connections.
     pub async fn run(self) -> AppResult<()> {
         server::run(self).await
     }

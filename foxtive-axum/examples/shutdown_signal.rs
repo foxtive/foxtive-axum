@@ -1,39 +1,30 @@
 use axum::Router;
 use axum::routing::get;
-use foxtive::Environment;
+use foxtive::{App, Environment};
 use foxtive::results::AppResult;
-use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::server::Server;
-use tokio::signal;
 use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-    // Create your routes
-    let app = Router::new().route("/", get(handler));
+    // Build the App (DI container)
+    let app = App::builder("Shutdown Signal", "SHUTDOWN_SIGNAL")
+        .environment(Environment::Local)
+        .build()
+        .await?;
 
-    // Setup Foxtive core
-    let foxtive_setup = FoxtiveSetup {
-        env_prefix: "FOXTIVE".to_string(),
-        private_key: "".to_string(),
-        public_key: "".to_string(),
-        app_key: "".to_string(),
-        app_code: "SHUTDOWN_SIGNAL".to_string(),
-        app_name: "Shutdown Signal".to_string(),
-        env: Environment::Local,
-        #[cfg(feature = "templating")]
-        template_directory: "".to_string(),
-    };
+    // Create your routes
+    let router = Router::new().route("/", get(handler));
 
     // Configure & run server
-    Server::new(foxtive_setup)
+    Server::new(app)
         .host("127.0.0.1")
         .port(3000)
-        .router(app)
-        .tracing(Tracing::minimal())
+        .router(router)
+        .tracing(Tracing::default())
         .on_started(async { info!("Server started successfully") })
         .shutdown_signal(shutdown_signal())
         .run()
@@ -47,7 +38,7 @@ async fn handler() -> HttpResult {
 async fn shutdown_signal() {
     // Wait for SIGINT (Ctrl+C) or SIGTERM (in k8s or docker)
     let ctrl_c = async {
-        signal::ctrl_c()
+        tokio::signal::ctrl_c()
             .await
             .expect("failed to install Ctrl+C handler");
     };

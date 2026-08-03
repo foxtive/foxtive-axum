@@ -1,8 +1,7 @@
 use axum::Router;
 use axum::routing::post;
-use foxtive::Environment;
+use foxtive::App;
 use foxtive::results::AppResult;
-use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
 use foxtive_axum::enums::response_code::ResponseCode;
 use foxtive_axum::error::HttpError;
@@ -15,28 +14,21 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-    // Create your routes
-    let app = Router::new().route("/upload", post(handler));
+    // Build the App (DI container)
+    let app = App::builder("Byte Extractor", "BYTE")
+        .environment(foxtive::Environment::Local)
+        .build()
+        .await?;
 
-    // Setup Foxtive core
-    let foxtive_setup = FoxtiveSetup {
-        env_prefix: "FOXTIVE".to_string(),
-        private_key: "".to_string(),
-        public_key: "".to_string(),
-        app_key: "".to_string(),
-        app_code: "BYTE".to_string(),
-        app_name: "Byte Extractor".to_string(),
-        env: Environment::Local,
-        #[cfg(feature = "templating")]
-        template_directory: "".to_string(),
-    };
+    // Create your routes
+    let router = Router::new().route("/upload", post(handler));
 
     // Configure & run server
-    Server::new(foxtive_setup)
+    Server::new(app)
         .host("127.0.0.1")
         .port(3000)
-        .router(app)
-        .tracing(Tracing::minimal())
+        .router(router)
+        .tracing(Tracing::default())
         .on_started(async { info!("Server started successfully") })
         .run()
         .await

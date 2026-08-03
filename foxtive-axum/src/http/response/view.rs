@@ -2,14 +2,18 @@ use crate::http::HttpResult;
 use crate::http::responder::Responder;
 use crate::http::response::ViewContext;
 use axum::http::StatusCode;
-use foxtive::FOXTIVE;
-use foxtive::prelude::AppStateExt;
+use foxtive::App;
 
+/// Template view renderer.
+///
+/// Renders server-side templates using the foxtive templating engine
+/// and returns them as HTML responses.
 pub struct View;
 
 impl View {
-    pub fn render(view: &str, ctx: &ViewContext) -> HttpResult {
-        let html = FOXTIVE.app().render(view.to_string(), ctx)?;
+    /// Render a template with the given context and return an HTML response.
+    pub fn render(app: &App, view: &str, ctx: &ViewContext) -> HttpResult {
+        let html = app.render(view.to_string(), ctx)?;
         Ok(Responder::html(&html, StatusCode::OK))
     }
 }

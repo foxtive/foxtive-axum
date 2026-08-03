@@ -1,4 +1,3 @@
-use crate::{FOXTIVE_AXUM, FoxtiveAxumExt};
 use foxtive::helpers::FileExtHelper;
 use std::path::{Path, PathBuf};
 
@@ -15,12 +14,9 @@ pub const DEFAULT_STATIC_MEDIA_EXTENSIONS: &[&str] = &[
     "swf", "eps", "ai", "psd", "sketch", "fig",
 ];
 
-pub fn is_url_a_file(path: &str) -> bool {
+pub fn is_url_a_file(path: &str, allowed_extensions: &[String]) -> bool {
     if let Some(ext) = FileExtHelper::new().get_extension(path) {
-        return FOXTIVE_AXUM
-            .app()
-            .allowed_static_media_extensions
-            .contains(&ext);
+        return allowed_extensions.contains(&ext);
     }
 
     false

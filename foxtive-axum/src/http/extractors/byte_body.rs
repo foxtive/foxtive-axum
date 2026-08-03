@@ -1,4 +1,4 @@
-use crate::{FOXTIVE_AXUM, FoxtiveAxumExt};
+use crate::server::BodyConfig;
 use axum::extract::{FromRequest, Request};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -96,8 +96,12 @@ where
     type Rejection = ByteExtractionError;
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
-        // Get max size from Byte body configuration
-        let max_size = FOXTIVE_AXUM.app().body_config.byte_limit;
+        // Read configured limit from request extensions, fall back to default
+        let max_size = req
+            .extensions()
+            .get::<BodyConfig>()
+            .map(|c| c.byte_limit)
+            .unwrap_or(10 * 1024 * 1024);
         
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)

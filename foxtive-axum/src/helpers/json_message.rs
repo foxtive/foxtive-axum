@@ -2,9 +2,20 @@ use crate::http::responder::JsonResponse;
 use foxtive::helpers::time::current_timestamp;
 use serde::Serialize;
 
+/// Factory for creating standardized JSON response envelopes.
+///
+/// Wraps data with `code`, `success`, `timestamp`, and optional `message`
+/// fields using the [`JsonResponse`] type.
 pub struct JsonMessage;
 
 impl JsonMessage {
+    /// Build a complete JSON response envelope.
+    ///
+    /// # Arguments
+    /// * `data` - the response payload
+    /// * `code` - application response code (e.g. "000")
+    /// * `success` - whether the operation succeeded
+    /// * `message` - optional human-readable message
     pub fn make<T: Serialize>(
         data: T,
         code: &str,

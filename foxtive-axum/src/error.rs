@@ -1,46 +1,58 @@
-use crate::http::response::anyhow::helpers::make_status_code;
+//! HTTP error types for the framework.
+//!
+//! [`HttpError`] is the primary error type used in handler return values.
+//! It implements [`IntoResponse`](axum::response::IntoResponse) so errors
+//! are automatically converted to proper HTTP responses.
+
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use foxtive::Error;
 use foxtive::prelude::AppMessage;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 use tokio::task::JoinError;
+use crate::contracts::ResponseCodeContract;
 
+/// HTTP error type that converts application errors into HTTP responses.
+///
+/// This enum implements [`IntoResponse`], so it can be returned directly
+/// from axum handlers. Each variant maps to an appropriate HTTP status code.
+///
+/// # Example
+/// ```rust
+/// use foxtive_axum::error::HttpError;
+/// use foxtive::prelude::AppMessage;
+///
+/// let err = HttpError::from(AppMessage::not_found("user"));
+/// ```
 #[derive(Error, Debug)]
 pub enum HttpError {
+    /// A boxed standard error (maps to 500).
     #[error("{0}")]
     Std(Box<dyn std::error::Error + Send + Sync + 'static>),
+    /// An application-level error message (maps to the message's status code).
     #[error("{0}")]
-    AppError(#[from] Error),
-    #[error("{0}")]
-    AppMessage(#[from] AppMessage),
+    AppError(#[from] AppMessage),
+    /// A UTF-8 encoding error (maps to 500).
     #[error("Utf8 Error: {0}")]
     Utf8Error(#[from] FromUtf8Error),
+    /// A tokio task join error (maps to 500).
     #[error("Join Error: {0}")]
     JoinError(#[from] JoinError),
+    /// A validation error from the `validator` crate (maps to 400).
     #[cfg(feature = "validator")]
     #[error("Validation Error: {0}")]
     ValidationError(#[from] validator::ValidationErrors),
 }
 
 impl HttpError {
-    pub fn into_app_error(self) -> foxtive::Error {
-        foxtive::Error::from(self)
-    }
-
+    /// Returns the HTTP status code for this error.
     pub fn status_code(&self) -> StatusCode {
         match self {
-            HttpError::AppError(e) => make_status_code(e),
-            HttpError::AppMessage(m) => m.status_code(),
+            HttpError::AppError(m) => m.status_code(),
             #[cfg(feature = "validator")]
             HttpError::ValidationError(_) => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
-    }
-
-    pub fn into_error_response(self) -> Response {
-        helpers::make_response(&self.into_app_error())
     }
 }
 
@@ -52,57 +64,47 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for HttpError {
 
 impl IntoResponse for HttpError {
     fn into_response(self) -> Response {
-        helpers::make_http_error_response(&self)
-    }
-}
-
-pub(crate) mod helpers {
-    use crate::error::HttpError;
-    pub(crate) use crate::http::response::anyhow::helpers::make_response;
-    use axum::response::Response;
-    use foxtive::prelude::AppMessage;
-    use tracing::error;
-
-    pub(crate) fn make_http_error_response(err: &HttpError) -> Response {
-        #[cfg(feature = "validator")]
-        use crate::enums::response_code::ResponseCode;
-        #[cfg(feature = "validator")]
-        use crate::http::responder::Responder;
-
-        match err {
-            HttpError::AppMessage(m) => make_response(&m.clone().into_anyhow()),
-            HttpError::AppError(e) => make_response(e),
+        match &self {
+            HttpError::AppError(m) => {
+                m.log();
+                make_json_error_response(&m.message(), m.status_code())
+            }
             #[cfg(feature = "validator")]
             HttpError::ValidationError(e) => {
-                error!("Validation Error: {e}");
+                use crate::enums::response_code::ResponseCode;
+                use crate::http::responder::Responder;
+                tracing::error!("Validation Error: {e}");
                 Responder::send_msg(e.errors(), ResponseCode::BadRequest, "Validation Error")
             }
             _ => {
-                error!("Error: {err}");
-                make_response(&foxtive::Error::from(AppMessage::internal_server_error("")))
+                tracing::error!("Error: {self}");
+                make_json_error_response(
+                    &AppMessage::internal_server_error("Internal Server Error").message(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                )
             }
         }
     }
 }
 
+/// Build a JSON error response using the standard response format.
+fn make_json_error_response(body: &str, status: StatusCode) -> Response {
+    use crate::enums::response_code::ResponseCode;
+    use crate::http::responder::Responder;
+    let code = ResponseCode::from_status(status);
+    Responder::message(body, code)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::helpers::make_http_error_response;
-    use foxtive::Error;
+    use foxtive::prelude::AppMessage;
 
     #[test]
     fn test_app_error() {
-        let error = HttpError::AppError(Error::from(AppMessage::internal_server_error("")));
-        let app_error = make_http_error_response(&error);
-        assert_eq!(app_error.status(), 500);
-    }
-
-    #[test]
-    fn test_app_message() {
-        let error = HttpError::AppMessage(AppMessage::internal_server_error(""));
-        let app_error = make_http_error_response(&error);
-        assert_eq!(app_error.status(), 500);
+        let error = HttpError::AppError(AppMessage::internal_server_error(""));
+        let response = error.into_response();
+        assert_eq!(response.status(), 500);
     }
 
     #[test]
@@ -112,15 +114,15 @@ mod tests {
             std::io::ErrorKind::Other,
             "Test",
         )));
-        let app_error = make_http_error_response(&error);
-        assert_eq!(app_error.status(), 500);
+        let response = error.into_response();
+        assert_eq!(response.status(), 500);
     }
 
     #[cfg(feature = "validator")]
     #[test]
     fn test_validation_error() {
         let error = HttpError::ValidationError(validator::ValidationErrors::new());
-        let app_error = make_http_error_response(&error);
-        assert_eq!(app_error.status(), 400);
+        let response = error.into_response();
+        assert_eq!(response.status(), 400);
     }
 }

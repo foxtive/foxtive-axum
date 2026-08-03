@@ -1,6 +1,6 @@
 [package]
 name = "foxtive-axum"
-version = "0.13.0"
+version = "1.0.0"
 edition = "2024"
 license = "MIT"
 description = "Micro-Framework Based on Axum"
@@ -12,6 +12,8 @@ cors = ["tower-http/cors"]
 validator = ["dep:validator"]
 templating = ["foxtive/templating"]
 static = ["tower-http/fs", "tokio/fs", "dep:mime_guess"]
+timeout = ["tower-http/timeout"]
+rate-limit = ["dep:tower_governor"]
 
 [dependencies]
 futures = { workspace = true }
@@ -26,7 +28,8 @@ tracing = { workspace = true }
 mime_guess = { version = "2.0.5", optional = true }
 
 tower = { version = "0.5.3", features = [] }
-tower-http = { version = "0.6.10", features = ["trace", "catch-panic", "cors"] }
+tower-http = { version = "0.6.10", features = ["trace", "catch-panic", "cors", "timeout"] }
+tower_governor = { version = "0.2", optional = true }
 
 validator = { version = "0.20.0", features = ["derive"], optional = true }
 
@@ -43,3 +46,8 @@ path = "examples/shutdown_signal.rs"
 [[example]]
 name = "byte-extractor"
 path = "examples/byte_extractor.rs"
+
+[[example]]
+name = "security-features"
+path = "examples/security_features.rs"
+required-features = []

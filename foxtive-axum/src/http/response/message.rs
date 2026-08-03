@@ -15,7 +15,7 @@ impl AppMessageExt for AppMessage {
                 &self.message(),
                 ResponseCode::from_status(self.status_code()),
             )),
-            false => Err(HttpError::AppMessage(self)),
+            false => Err(HttpError::AppError(self)),
         }
     }
 }
@@ -29,20 +29,11 @@ impl AppMessageExt for AppResult<AppMessage> {
     }
 }
 
-impl AppMessageExt for Result<AppMessage, AppMessage> {
-    fn respond(self) -> HttpResult {
-        match self {
-            Ok(msg) => msg.respond(),
-            Err(err) => err.respond(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::http::response::ext::AppMessageExt;
-    use foxtive::Error;
     use foxtive::prelude::AppMessage;
+    use foxtive::results::AppResult;
 
     #[test]
     fn test_app_message_respond_success() {
@@ -60,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_app_message_result_respond() {
-        let msg: Result<AppMessage, Error> =
+        let msg: AppResult<AppMessage> =
             Ok(AppMessage::internal_server_error("Internal Server Error"));
         let result = msg.respond();
         assert!(result.is_err());
@@ -68,7 +59,8 @@ mod tests {
 
     #[test]
     fn test_app_message_result_error_respond() {
-        let msg = Err(AppMessage::internal_server_error("Internal Server Error"));
+        let msg: AppResult<AppMessage> =
+            Err(AppMessage::internal_server_error("Internal Server Error"));
         let result = msg.respond();
         assert!(result.is_err());
     }

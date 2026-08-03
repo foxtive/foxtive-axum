@@ -1,15 +1,15 @@
 mod config;
 
 pub use config::{Server, BodyConfig};
+#[cfg(feature = "rate-limit")]
+pub use config::RateLimitConfig;
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
 use std::net::SocketAddr;
 
 use crate::http::kernel;
 use crate::server::config::ShutdownSignalHandler;
-use crate::setup::{FoxtiveAxumSetup, make_state};
-use foxtive::Error;
-use foxtive::prelude::AppResult;
+use foxtive::results::AppResult;
 use foxtive::setup::load_environment_variables;
 use foxtive::setup::trace::Tracing;
 use tokio::signal;
@@ -24,41 +24,57 @@ pub(crate) fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
 pub(crate) async fn run(config: Server) -> AppResult<()> {
     if !config.has_started_bootstrap {
         let t_config = config.tracing_config.unwrap_or_default();
-        init_bootstrap(&config.app, t_config).expect("failed to init bootstrap: ");
+        init_bootstrap(&config.service_name, t_config)?;
     }
 
     #[allow(unused_mut)]
     let mut app = config.router;
 
-    #[allow(unused_mut)]
+    #[cfg(feature = "static")]
     let mut static_file_dir: Option<String> = None;
 
     #[cfg(feature = "static")]
     if cfg!(feature = "static") {
-        app = {
-            static_file_dir = Some(config.static_config.dir.clone());
-            let dir = tower_http::services::ServeDir::new(config.static_config.dir);
-            app.nest_service(&config.static_config.path, dir)
-        };
+        static_file_dir = Some(config.static_config.dir.clone());
+        let dir = tower_http::services::ServeDir::new(&config.static_config.dir);
+        app = app.nest_service(&config.static_config.path, dir);
     }
 
-    let state = make_state(FoxtiveAxumSetup {
-        static_file_dir,
-        allowed_origins: config.allowed_origins,
-        allowed_methods: config.allowed_methods,
-        allowed_headers: config.allowed_headers,
-        foxtive_setup: config.foxtive_setup,
-        body_config: config.body_config.unwrap_or_default(),
-        #[cfg(feature = "static")]
-        allowed_static_media_extensions: config.allowed_static_media_extensions,
-    })
-    .await?;
+    let allowed_origins = config.allowed_origins.clone();
+    let allowed_methods = config.allowed_methods.clone();
+    let allowed_headers = config.allowed_headers.clone();
+
+    #[cfg(feature = "static")]
+    let allowed_static_media_extensions = config.allowed_static_media_extensions.clone().unwrap_or(
+        crate::http::static_file::DEFAULT_STATIC_MEDIA_EXTENSIONS
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+    );
+
+    let foxtive_app = config.app.clone();
 
     if let Some(bootstrap) = config.bootstrap {
-        bootstrap(state.clone()).await?;
+        bootstrap(config.app.clone()).await?;
     }
 
-    let app = kernel::setup(app, state);
+    let app = kernel::setup(
+        app,
+        foxtive_app.clone(),
+        kernel::KernelConfig {
+            allowed_origins,
+            allowed_methods,
+            allowed_headers,
+            client_timeout: config.client_timeout,
+            body_config: config.body_config.unwrap_or_default(),
+            #[cfg(feature = "rate-limit")]
+            rate_limit_config: config.rate_limit_config,
+            #[cfg(feature = "static")]
+            static_file_dir,
+            #[cfg(feature = "static")]
+            allowed_static_media_extensions,
+        },
+    );
 
     info!("Starting server at {}:{} ...", config.host, config.port);
     let listener = tokio::net::TcpListener::bind((config.host, config.port))
@@ -69,19 +85,31 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
         on_server_started.await;
     }
 
+    // Run startup hooks
+    foxtive_app.run_startup_hooks().await?;
+
+    let app_for_shutdown = foxtive_app.clone();
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(match config.shutdown_signal {
-        None => Box::pin(shutdown_signal(config.on_shutdown)),
+        None => Box::pin(shutdown_signal(config.on_shutdown, app_for_shutdown)),
         Some(signal) => signal,
     })
     .await
-    .map_err(Error::from)
+    .map_err(|e| foxtive::prelude::AppMessage::Infrastructure {
+        message: "Server error".to_string(),
+        source: Some(Box::new(e)),
+    })?;
+
+    // Run shutdown hooks after server stops
+    foxtive_app.run_shutdown_hooks().await;
+
+    Ok(())
 }
 
-async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>) {
+async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>, _app: std::sync::Arc<foxtive::App>) {
     // Wait for SIGINT (Ctrl+C) or SIGTERM (in k8s or docker)
     let ctrl_c = async {
         signal::ctrl_c()

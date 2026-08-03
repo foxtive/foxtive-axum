@@ -33,21 +33,21 @@ where
     fn respond_code<C: ResponseCodeContract, M: Into<String>>(self, msg: M, code: C) -> HttpResult {
         match self {
             Ok(val) => val.send_result_msg(code, msg),
-            Err(err) => Err(HttpError::AppError(err.into())),
+            Err(err) => Err(HttpError::JoinError(err)),
         }
     }
 
     fn respond_msg(self, msg: impl Into<String>) -> HttpResult {
         match self {
             Ok(val) => val.send_result_msg(ResponseCode::Ok, msg),
-            Err(err) => Err(HttpError::AppError(err.into())),
+            Err(err) => Err(HttpError::JoinError(err)),
         }
     }
 
     fn respond(self) -> HttpResult {
         match self {
             Ok(val) => val.send_result(ResponseCode::Ok),
-            Err(err) => Err(HttpError::AppError(err.into())),
+            Err(err) => Err(HttpError::JoinError(err)),
         }
     }
 }
@@ -130,7 +130,7 @@ mod tests {
         let result: Result<AppResult<()>, JoinError> = Err(err);
 
         let response = result.respond();
-        assert!(matches!(response, Err(HttpError::AppError(_))));
+        assert!(matches!(response, Err(HttpError::JoinError(_))));
     }
 
     #[tokio::test]
@@ -144,7 +144,7 @@ mod tests {
         let result: Result<AppResult<()>, JoinError> = Err(err);
 
         let response = result.respond_msg("Failure");
-        assert!(matches!(response, Err(HttpError::AppError(_))));
+        assert!(matches!(response, Err(HttpError::JoinError(_))));
     }
 
     #[tokio::test]
@@ -158,6 +158,6 @@ mod tests {
         let result: Result<AppResult<()>, JoinError> = Err(err);
 
         let response = result.respond_code("Failure", ResponseCode::InternalServerError);
-        assert!(matches!(response, Err(HttpError::AppError(_))));
+        assert!(matches!(response, Err(HttpError::JoinError(_))));
     }
 }

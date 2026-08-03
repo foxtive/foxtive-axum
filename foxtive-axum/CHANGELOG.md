@@ -1,5 +1,18 @@
 # Foxtive Axum Changelog
-Foxtive Axum changelog file 
+
+### 1.0.0 (2026-07-20)
+* **BREAKING** refactor(server): migrate from global `OnceLock` state to `Arc<App>` dependency injection
+* **BREAKING** refactor(server): `Server::new()` now accepts `Arc<App>` instead of `FoxtiveSetup`
+* feat(server): wire `BodyConfig` through Extension layer so extractors respect configured limits
+* feat(extractors): `JsonBody`, `StringBody`, `ByteBody` now read size limits from `BodyConfig` via request extensions
+* feat(docs): add `#![warn(missing_docs)]` with full documentation coverage on all public APIs
+* feat(docs): add doc-tests for `Server`, `ResponseCode`, `StructResponseExt`, and more
+* refactor(error): replace `anyhow` error handling with direct `AppMessage` types
+* refactor(kernel): inject `Arc<App>` via `axum::Extension` layer for handler access
+* feat(lifecycle): bootstrap, startup, and shutdown hooks integrated with `foxtive::App`
+* feat(security): restrictive CORS default (no headers unless explicitly configured)
+* feat(security): rate-limiting support via `tower-governor` (feature-gated)
+* fix(extractors): body size limits enforced via `BodyConfig` instead of hardcoded values
 
 ### 0.13.0 (2026-05-16)
 * feat(http): refactor extractors with configurable size limits and improved memory management

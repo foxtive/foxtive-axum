@@ -1,21 +1,50 @@
 use crate::contracts::ResponseCodeContract;
 use axum::http::StatusCode;
 
+/// Standardized response codes mapping to HTTP status codes.
+///
+/// Each variant provides a string code (e.g. "000") and a corresponding
+/// HTTP status code for use in API responses.
+///
+/// # Example
+/// ```rust
+/// use foxtive_axum::enums::response_code::ResponseCode;
+/// use foxtive_axum::contracts::ResponseCodeContract;
+/// use axum::http::StatusCode;
+///
+/// assert_eq!(ResponseCode::Ok.status(), StatusCode::OK);
+/// assert_eq!(ResponseCode::Ok.code(), "000");
+/// assert!(ResponseCode::Ok.success());
+/// ```
 #[derive(Clone)]
 pub enum ResponseCode {
+    /// 200 OK - operation succeeded.
     Ok,
+    /// 201 Created - resource was created.
     Created,
+    /// 202 Accepted - request accepted for processing.
     Accepted,
+    /// 204 No Content - success with no response body.
     NoContent,
+    /// 400 Bad Request - client sent an invalid request.
     BadRequest,
+    /// 401 Unauthorized - authentication is required.
     Unauthorized,
+    /// 402 Payment Required - payment is required.
     PaymentRequired,
+    /// 403 Forbidden - client lacks permission.
     Forbidden,
+    /// 404 Not Found - resource does not exist.
     NotFound,
+    /// 409 Conflict - request conflicts with current state.
     Conflict,
+    /// 500 Internal Server Error - unexpected server failure.
     InternalServerError,
+    /// 503 Service Unavailable - server is temporarily unavailable.
     ServiceUnavailable,
+    /// 501 Not Implemented - functionality not implemented.
     NotImplemented,
+    /// 405 Method Not Allowed - HTTP method is not allowed for this resource.
     MethodNotAllowed,
 }
 

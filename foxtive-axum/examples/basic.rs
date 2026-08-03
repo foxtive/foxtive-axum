@@ -1,40 +1,34 @@
+use axum::Extension;
 use axum::Router;
 use axum::routing::get;
-use foxtive::Environment;
+use foxtive::App;
 use foxtive::results::AppResult;
-use foxtive::setup::FoxtiveSetup;
 use foxtive::setup::trace::Tracing;
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::server::Server;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-    // Create your routes
-    let app = Router::new().route("/", get(handler));
+    // Build the App (DI container)
+    let app = App::builder("Basic", "BASIC")
+        .environment(foxtive::Environment::Local)
+        .build()
+        .await?;
 
-    // Setup Foxtive core
-    let foxtive_setup = FoxtiveSetup {
-        env_prefix: "FOXTIVE".to_string(),
-        private_key: "".to_string(),
-        public_key: "".to_string(),
-        app_key: "".to_string(),
-        app_code: "BASIC".to_string(),
-        app_name: "Basic".to_string(),
-        env: Environment::Local,
-        #[cfg(feature = "templating")]
-        template_directory: "".to_string(),
-    };
+    // Create your routes
+    let router = Router::new().route("/", get(handler));
 
     // Configure & run server
-    Server::new(foxtive_setup)
+    Server::new(app)
         .host("127.0.0.1")
         .port(3000)
-        .router(app)
-        .tracing(Tracing::minimal())
-        .bootstrap(|_setup| async {
-            info!("Bootstrapping application ...");
+        .router(router)
+        .tracing(Tracing::default())
+        .bootstrap(|app| async move {
+            info!("Bootstrapping application: {}", app.app_name());
             Ok(())
         })
         .on_started(async { info!("Server started successfully") })
@@ -42,6 +36,8 @@ async fn main() -> AppResult<()> {
         .await
 }
 
-async fn handler() -> HttpResult {
+async fn handler(Extension(app): Extension<Arc<App>>) -> HttpResult {
+    info!("Handling request, app name: {}", app.app_name());
+    // Access services: app.get::<MyService>(), app.db(), app.redis(), etc.
     "Hello, World!".respond()
 }

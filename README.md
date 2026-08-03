@@ -1,17 +1,20 @@
 # Foxtive Axum
 
-Foxtive Axum is a Rust web framework built on top of [Axum](https://github.com/tokio-rs/axum) that provides standardized response formats, error handling, custom extractors, and utilities for building REST APIs.
+Foxtive Axum is a Rust web framework built on top of [Axum](https://github.com/tokio-rs/axum) that provides standardized response formats, error handling, custom extractors, dependency injection, and utilities for building REST APIs.
 
 ## Features
 
+- **Dependency injection** via `Arc<App>` - no global state
 - Standardized JSON response format
 - Integrated error handling with HTTP status codes
-- **Custom request body extractors** for enhanced data handling
-- CORS support
+- **Custom request body extractors** with configurable size limits
+- CORS support (restrictive by default)
 - Static file serving (optional)
 - Request validation (optional)
+- Rate limiting (optional)
 - Tracing and logging integration
 - Panic recovery middleware
+- Lifecycle hooks (startup/shutdown)
 
 ## Installation
 
@@ -19,7 +22,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-foxtive-axum = { version = "0.6.0" }
+foxtive-axum = { version = "1.0" }
 ```
 
 ### Features
@@ -29,12 +32,15 @@ Foxtive Axum comes with optional features:
 - `cors` - Enables CORS support
 - `static` - Enables static file serving
 - `validator` - Enables request validation
+- `templating` - Enables server-side template rendering
+- `rate-limit` - Enables rate limiting via tower-governor
+- `timeout` - Enables request timeout middleware
 
 To enable features, add them to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-foxtive-axum = { version = "0.1.0", features = ["cors", "static"] }
+foxtive-axum = { version = "1.0", features = ["cors", "static", "rate-limit"] }
 ```
 
 ## Usage
@@ -44,50 +50,65 @@ foxtive-axum = { version = "0.1.0", features = ["cors", "static"] }
 ```rust
 use axum::routing::get;
 use axum::Router;
+use axum::Extension;
 use foxtive::results::AppResult;
 use foxtive::setup::trace::Tracing;
-use foxtive::setup::FoxtiveSetup;
-use foxtive::Environment;
+use foxtive::App;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::server::Server;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-    // Create your routes
-    let app = Router::new()
-        .route("/", get(handler));
+    // Build the App (DI container)
+    let app = App::builder("Basic", "BASIC")
+        .environment(foxtive::Environment::Local)
+        .build()
+        .await?;
 
-    // Setup Foxtive core
-    let foxtive_setup = FoxtiveSetup {
-        env_prefix: "FOXTIVE".to_string(),
-        private_key: "".to_string(),
-        public_key: "".to_string(),
-        app_key: "".to_string(),
-        app_code: "BASIC".to_string(),
-        app_name: "Basic".to_string(),
-        env: Environment::Local,
-    };
+    // Create your routes
+    let router = Router::new().route("/", get(handler));
 
     // Configure & run server
-    Server::new(foxtive_setup)
+    Server::new(app)
         .host("127.0.0.1")
         .port(3000)
-        .router(app)
-        .tracing(Tracing::minimal())
-        .bootstrap(|_setup| async {
-            info!("Bootstrapping application ...");
+        .router(router)
+        .tracing(Tracing::default())
+        .bootstrap(|app| async move {
+            info!("Bootstrapping application: {}", app.app_name());
             Ok(())
         })
-        .on_started(|| info!("Server started successfully"))
+        .on_started(async { info!("Server started successfully") })
         .run()
         .await
 }
 
-async fn handler() -> HttpResult {
+async fn handler(Extension(app): Extension<Arc<App>>) -> HttpResult {
+    // Access services: app.get::<MyService>(), app.db(), app.redis(), etc.
+    info!("Handling request, app name: {}", app.app_name());
     "Hello, World!".respond()
 }
+```
+
+## Body Size Configuration
+
+Configure size limits for request body extractors:
+
+```rust
+use foxtive_axum::server::{Server, BodyConfig};
+
+let body_config = BodyConfig::default()
+    .json_limit(1024 * 1024)      // 1 MB for JSON
+    .string_limit(512 * 1024)     // 512 KB for strings
+    .byte_limit(5 * 1024 * 1024); // 5 MB for bytes
+
+Server::new(app)
+    .body_config(body_config)
+    .run()
+    .await
 ```
 
 ## Custom Request Body Extractors
@@ -100,7 +121,7 @@ An extractor that deserializes JSON while preserving the original raw JSON strin
 
 #### Methods
 
-- `body() -> &String` - Get reference to raw JSON string
+- `body() -> &str` - Get reference to raw JSON string
 - `into_body(self) -> String` - Consume and get raw JSON string
 - `inner() -> &T` - Get reference to deserialized object
 - `into_inner(self) -> T` - Consume and get deserialized object
@@ -111,7 +132,7 @@ An extractor that deserializes JSON while preserving the original raw JSON strin
 ```rust
 use axum::{routing::post, Router};
 use foxtive_axum::http::extractors::JsonBody;
-use foxtive_axum::http::ext::StructResponseExt;
+use foxtive_axum::http::response::ext::StructResponseExt;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -127,9 +148,6 @@ async fn create_user(json: JsonBody<CreateUserRequest>) -> HttpResult {
     
     // Access parsed data directly via Deref
     let user_name = &json.name;
-    
-    // Forward raw JSON to audit service
-    audit_service::log_request(json.body().clone()).await;
     
     // Create response with user data
     format!("Created user: {}", user_name).respond()
@@ -152,40 +170,15 @@ An extractor for handling raw binary data, perfect for file uploads, image proce
 
 ```rust
 use foxtive_axum::http::extractors::ByteBody;
-use foxtive_axum::http::ext::StructResponseExt;
-use foxtive_axum::error::HttpError;
+use foxtive_axum::http::response::ext::StructResponseExt;
 
 async fn upload_file(body: ByteBody) -> HttpResult {
     if body.is_empty() {
-        return "No file data received".respond_code(
-            ResponseCode::BadRequest,
-            "Empty file upload"
-        );
+        return "No file data received".respond();
     }
     
     let file_size = body.len();
-    
-    // Check if it's a valid image by examining magic bytes
-    let bytes = body.bytes();
-    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        // JPEG image
-        save_image("jpeg", body.into_bytes()).await?;
-        format!("JPEG image uploaded successfully ({} bytes)", file_size).respond()
-    } else if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
-        // PNG image
-        save_image("png", body.into_bytes()).await?;
-        format!("PNG image uploaded successfully ({} bytes)", file_size).respond()
-    } else {
-        "Unsupported image format".respond_code(
-            ResponseCode::BadRequest,
-            "Only JPEG and PNG images are supported"
-        )
-    }
-}
-
-async fn save_image(format: &str, data: Vec<u8>) -> Result<(), HttpError> {
-    // Implementation for saving image
-    Ok(())
+    format!("Received {} bytes", file_size).respond()
 }
 ```
 
@@ -205,51 +198,17 @@ An extractor that reads the request body as a UTF-8 string with additional parsi
 
 ```rust
 use foxtive_axum::http::extractors::StringBody;
-use foxtive_axum::http::ext::StructResponseExt;
+use foxtive_axum::http::response::ext::StructResponseExt;
 
 async fn submit_calculation(body: StringBody) -> HttpResult {
-    if body.is_empty() {
-        return "No calculation provided".respond_code(
-            ResponseCode::BadRequest,
-            "Request body cannot be empty"
-        );
-    }
-    
-    // Parse the string as a number
     match body.parse::<f64>() {
         Ok(number) => {
             let result = number * number;
-            format!("{}² = {}", number, result).respond_msg("Calculation completed")
+            format!("{}² = {}", number, result).respond()
         }
         Err(_) => {
-            format!("'{}' is not a valid number", body.body()).respond_code(
-                ResponseCode::BadRequest,
-                "Invalid number format"
-            )
+            format!("'{}' is not a valid number", body.body()).respond()
         }
-    }
-}
-
-async fn parse_config(body: StringBody) -> HttpResult {
-    let config_str = body.body();
-    
-    // Try parsing as JSON first, then fall back to other formats
-    if config_str.trim_start().starts_with('{') {
-        match serde_json::from_str::<serde_json::Value>(config_str) {
-            Ok(json_val) => {
-                format!("Parsed JSON config with {} keys", 
-                    json_val.as_object().map(|o| o.len()).unwrap_or(0)
-                ).respond()
-            }
-            Err(_) => {
-                "Invalid JSON format".respond_code(
-                    ResponseCode::BadRequest,
-                    "Configuration must be valid JSON"
-                )
-            }
-        }
-    } else {
-        format!("Raw config: {} characters", config_str.len()).respond()
     }
 }
 ```
@@ -259,29 +218,15 @@ async fn parse_config(body: StringBody) -> HttpResult {
 All custom extractors provide proper error handling with appropriate HTTP status codes:
 
 - **400 Bad Request** - Invalid data format, JSON parsing errors, invalid UTF-8
-- **413 Payload Too Large** - Request body exceeds size limits
+- **413 Payload Too Large** - Request body exceeds configured size limits
 - **500 Internal Server Error** - Unexpected errors during processing
-
-```rust
-use foxtive_axum::http::extractors::JsonBody;
-
-async fn handler(json: JsonBody<MyType>) -> Result<HttpResult, HttpError> {
-    // Extractors automatically handle common errors
-    // Custom processing errors can be handled explicitly
-    
-    match validate_business_logic(&json) {
-        Ok(_) => Ok("Success".respond()),
-        Err(e) => Err(HttpError::AppMessage(e.into())),
-    }
-}
-```
 
 ### Creating Responses
 
 Foxtive Axum provides a standardized JSON response format:
 
 ```rust
-use foxtive_axum::http::ext::StructResponseExt;
+use foxtive_axum::http::response::ext::StructResponseExt;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -290,37 +235,24 @@ struct User {
     name: String,
 }
 
-async fn get_user() -> impl IntoResponse {
+async fn get_user() -> HttpResult {
     let user = User {
         id: 1,
         name: "John Doe".to_string(),
     };
     
-    // Automatically creates a standardized JSON response
-    user.into_response()
-}
-
-async fn create_user() -> Result<impl IntoResponse, HttpError> {
-    let user = User {
-        id: 2,
-        name: "Jane Doe".to_string(),
-    };
-    
-    // Respond with a custom message and code
-    user.respond_msg("User created successfully")
+    // Creates a standardized JSON response (200 OK)
+    user.respond()
 }
 ```
 
 ### Working with Response Codes
 
-The library provides standard response codes:
-
 ```rust
 use foxtive_axum::enums::response_code::ResponseCode;
-use foxtive_axum::http::ext::StructResponseExt;
+use foxtive_axum::http::response::ext::StructResponseExt;
 
 async fn not_found() -> HttpResult {
-    // Return a 404 Not Found response
     ().respond_code(ResponseCode::NotFound, "Resource not found")
 }
 ```
@@ -331,130 +263,52 @@ Foxtive Axum provides integrated error handling:
 
 ```rust
 use foxtive_axum::error::HttpError;
-use foxtive::Error as FoxtiveError;
+use foxtive_axum::http::HttpResult;
 
-async fn fallible_handler() -> Result<impl IntoResponse, HttpError> {
-    // Convert application errors to HTTP errors
-    let result: Result<(), FoxtiveError> = some_operation().map_err(HttpError::from)?;
-    
-    // Or return custom errors
-    if something_bad_happens() {
-        return Err(HttpError::AppMessage(
-            "Something went wrong".into()
-        ));
-    }
+async fn fallible_handler() -> HttpResult {
+    // AppMessage errors are automatically converted to HTTP responses
+    let result: Result<(), HttpError> = some_operation()?;
     
     "Success".respond()
 }
 ```
 
-### Validation (with `validator` feature)
-
-When the `validator` feature is enabled, you can validate request payloads:
-
-```rust
-use serde::Deserialize;
-use validator::Validate;
-
-#[derive(Deserialize, Validate)]
-struct CreateUserRequest {
-    #[validate(length(min = 1, max = 100))]
-    name: String,
-    
-    #[validate(email)]
-    email: String,
-}
-
-async fn create_user(
-    Json(payload): Json<CreateUserRequest>
-) -> Result<impl IntoResponse, HttpError> {
-    // Validation happens automatically when using the validator feature
-    payload.validate()?;
-    
-    // Process the valid payload
-    // ...
-    
-    "User created".respond()
-}
-```
-
 ### CORS Configuration
-
-With the `cors` feature enabled:
 
 ```rust
 use foxtive_axum::server::Server;
-use foxtive_axum::setup::FoxtiveAxumSetup;
-use axum::http::HeaderValue;
+use axum::http::{HeaderValue, Method};
 
-#[tokio::main]
-async fn main() -> AppResult<()> {
-    Server::new(foxtive_setup)
-        .allow_origin(HeaderValue::from_static("https://example.com"))
-        .allow_method(axum::http::Method::GET)
-        .allow_method(axum::http::Method::POST)
-        .run()
-        .await
-}
+Server::new(app)
+    .allowed_origins(vec![HeaderValue::from_static("https://example.com")])
+    .allowed_methods(vec![Method::GET, Method::POST])
+    .run()
+    .await
 ```
 
 ### Static File Serving (with `static` feature)
 
-With the `static` feature enabled:
-
 ```rust
 use foxtive_axum::server::{Server, StaticFileConfig};
 
-#[tokio::main]
-async fn main() -> AppResult<()> {
-    Server::new(foxtive_setup)
-        .static_config(StaticFileConfig {
-            path: "/static".to_string(),
-            dir: "./public".to_string(),
-        })
-        .run()
-        .await
-}
+Server::new(app)
+    .static_config(StaticFileConfig {
+        path: "/static".to_string(),
+        dir: "./public".to_string(),
+    })
+    .run()
+    .await
 ```
 
-## Advanced Extractor Usage
-
-### Combining Multiple Data Sources
+### Rate Limiting (with `rate-limit` feature)
 
 ```rust
-use foxtive_axum::http::extractors::{JsonBody, StringBody};
-use axum::extract::Path;
+use foxtive_axum::server::{Server, RateLimitConfig};
 
-// Use extractors with other Axum extractors
-async fn update_user_with_notes(
-    Path(user_id): Path<u64>,
-    json: JsonBody<UpdateUserRequest>,
-    notes: StringBody,
-) -> HttpResult {
-    // Log the original JSON for auditing
-    audit_log::record_update(user_id, json.body()).await;
-    
-    // Process the user update
-    let user_data = json.inner();
-    let additional_notes = notes.body();
-    
-    // Update user with both structured data and notes
-    update_user(user_id, user_data, additional_notes).await?;
-    
-    "User updated successfully".respond()
-}
-```
-
-### File Upload with Metadata
-
-```rust
-use foxtive_axum::http::extractors::ByteBody;
-
-async fn upload_with_metadata(byte: ByteBody) -> HttpResult {
-    let byte = byte.inner();
-    
-    "Bytes collected successfully".respond()
-}
+Server::new(app)
+    .rate_limit(RateLimitConfig::per_minute(100))
+    .run()
+    .await
 ```
 
 ## Response Format
@@ -488,6 +342,7 @@ Where:
 | 003  | ResponseCode::NoContent           | 204         |
 | 004  | ResponseCode::BadRequest          | 400         |
 | 005  | ResponseCode::Unauthorized        | 401         |
+| 006  | ResponseCode::PaymentRequired     | 402         |
 | 007  | ResponseCode::Forbidden           | 403         |
 | 008  | ResponseCode::NotFound            | 404         |
 | 009  | ResponseCode::Conflict            | 409         |
@@ -496,48 +351,38 @@ Where:
 | 012  | ResponseCode::NotImplemented      | 501         |
 | 013  | ResponseCode::MethodNotAllowed    | 405         |
 
-## Best Practices
+## Migration from 0.x to 1.0
 
-### Choosing the Right Extractor
-
-- **`JsonBody<T>`** - Use when you need both JSON parsing and access to the raw JSON string (logging, forwarding, validation)
-- **`ByteBody`** - Use for binary data like file uploads, images, or when you need to inspect raw bytes
-- **`StringBody`** - Use for text data that might need parsing (form data, configuration files, simple text processing)
-
-### Performance Considerations
-
-- All extractors read the entire request body into memory
-- `JsonBody` performs JSON deserialization once and caches the parsed data
-
-### Error Handling Best Practices
+### Server initialization
 
 ```rust
-use foxtive_axum::http::extractors::JsonBody;
-use foxtive_axum::enums::response_code::ResponseCode;
+// Before (0.x)
+let setup = FoxtiveSetup { /* ... */ };
+Server::new(setup).run().await
 
-async fn robust_handler(json: JsonBody<MyData>) -> HttpResult {
-    // Extractors handle basic errors automatically
-    // Focus on business logic errors
-    
-    match process_data(json.inner()) {
-        Ok(result) => result.respond_msg("Processing completed"),
-        Err(ProcessingError::InvalidData(msg)) => {
-            msg.respond_code(ResponseCode::BadRequest, "Invalid input data")
-        }
-        Err(ProcessingError::ServiceUnavailable) => {
-            "Service temporarily unavailable".respond_code(
-                ResponseCode::ServiceUnavailable,
-                "Please try again later"
-            )
-        }
-        Err(_) => {
-            "Internal error occurred".respond_code(
-                ResponseCode::InternalServerError,
-                "Contact support if this persists"
-            )
-        }
-    }
-}
+// After (1.0)
+let app = App::builder("MyApp", "MYAPP").build().await?;
+Server::new(app).run().await
+```
+
+### Accessing application state in handlers
+
+```rust
+// Before (0.x) - via FoxtiveState
+async fn handler(State(state): State<FoxtiveState>) -> HttpResult { }
+
+// After (1.0) - via Extension
+async fn handler(Extension(app): Extension<Arc<App>>) -> HttpResult { }
+```
+
+### Error handling
+
+```rust
+// Before (0.x) - anyhow-based
+async fn handler() -> Result<impl IntoResponse, anyhow::Error> { }
+
+// After (1.0) - AppMessage-based
+async fn handler() -> HttpResult { }
 ```
 
 ## Contributing
