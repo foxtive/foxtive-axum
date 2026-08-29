@@ -43,7 +43,9 @@ impl TestServer {
         let listener = TcpListener::bind("127.0.0.1:0")
             .await
             .expect("Failed to bind test server");
-        let addr = listener.local_addr().expect("Failed to get test server address");
+        let addr = listener
+            .local_addr()
+            .expect("Failed to get test server address");
 
         let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
 

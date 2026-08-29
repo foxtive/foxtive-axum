@@ -1,9 +1,9 @@
 use axum::Extension;
 use axum::Router;
 use axum::routing::get;
-use foxtive::{App, Environment};
 use foxtive::results::AppResult;
 use foxtive::setup::trace::Tracing;
+use foxtive::{App, Environment};
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::server::Server;
@@ -43,7 +43,7 @@ async fn main() -> AppResult<()> {
             // Register services here if needed
             Ok(())
         })
-        .on_started(async { 
+        .on_started(async {
             info!("Server started at http://127.0.0.1:3001");
             info!("Try these endpoints:");
             info!("  - GET /");
@@ -57,7 +57,7 @@ async fn main() -> AppResult<()> {
 /// Root handler - basic example of accessing App
 async fn root_handler(Extension(app): Extension<Arc<App>>) -> HttpResult {
     info!("Root handler called, app: {}", app.app_name());
-    
+
     "Welcome to foxtive-axum! Check /app-info for details.".respond()
 }
 
@@ -68,7 +68,7 @@ async fn app_info_handler(Extension(app): Extension<Arc<App>>) -> HttpResult {
         environment: format!("{:?}", app.env()),
         message: "App accessed successfully via Extension extractor!".to_string(),
     };
-    
+
     info!("App info requested: {:?}", info);
     info.respond()
 }
@@ -80,6 +80,6 @@ async fn health_handler(Extension(app): Extension<Arc<App>>) -> HttpResult {
         "app": app.app_name(),
         "environment": format!("{:?}", app.env()),
     });
-    
+
     health_status.respond()
 }

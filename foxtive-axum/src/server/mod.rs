@@ -1,10 +1,10 @@
 mod config;
 
-pub use config::{Server, BodyConfig};
 #[cfg(feature = "rate-limit")]
 pub use config::RateLimitConfig;
 #[cfg(feature = "static")]
 pub use config::StaticFileConfig;
+pub use config::{BodyConfig, Server};
 use std::net::SocketAddr;
 
 use crate::http::kernel;
@@ -109,7 +109,10 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
     Ok(())
 }
 
-async fn shutdown_signal(app_signal: Option<ShutdownSignalHandler>, _app: std::sync::Arc<foxtive::App>) {
+async fn shutdown_signal(
+    app_signal: Option<ShutdownSignalHandler>,
+    _app: std::sync::Arc<foxtive::App>,
+) {
     // Wait for SIGINT (Ctrl+C) or SIGTERM (in k8s or docker)
     let ctrl_c = async {
         signal::ctrl_c()

@@ -78,7 +78,7 @@ impl RateLimitConfig {
     }
 
     /// Create custom rate limit configuration
-    /// 
+    ///
     /// # Arguments
     /// * `burst_size` - Maximum requests allowed in a burst
     /// * `period_seconds` - Time in seconds for rate replenishment
@@ -116,10 +116,10 @@ impl RateLimitConfig {
 pub struct BodyConfig {
     /// Maximum allowed size for JSON request bodies in bytes
     pub json_limit: usize,
-    
+
     /// Maximum allowed size for String request bodies in bytes
     pub string_limit: usize,
-    
+
     /// Maximum allowed size for Byte request bodies in bytes
     pub byte_limit: usize,
 }
@@ -147,9 +147,9 @@ impl BodyConfig {
 impl Default for BodyConfig {
     fn default() -> Self {
         Self {
-            json_limit: 2 * 1024 * 1024,    // 2 MB
-            string_limit: 2 * 1024 * 1024,  // 2 MB
-            byte_limit: 10 * 1024 * 1024,   // 10 MB
+            json_limit: 2 * 1024 * 1024,   // 2 MB
+            string_limit: 2 * 1024 * 1024, // 2 MB
+            byte_limit: 10 * 1024 * 1024,  // 10 MB
         }
     }
 }
