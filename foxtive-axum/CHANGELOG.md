@@ -1,5 +1,11 @@
 # Foxtive Axum Changelog
 
+### 1.1.0 (2026-08-29)
+* feat(request): add `RequestExt` trait with `service()`, `service_opt()`, and `service_cloned()` for DI access from handlers
+* fix(rate-limit): adapt to `tower-governor` 0.8 API (`GovernorLayer::new` with `Arc<GovernorConfig>`)
+* bump(foxtive): to version 1.2.0
+* bump(tower-governor): to version 0.8.0
+
 ### 1.0.0 (2026-07-20)
 * **BREAKING** refactor(server): migrate from global `OnceLock` state to `Arc<App>` dependency injection
 * **BREAKING** refactor(server): `Server::new()` now accepts `Arc<App>` instead of `FoxtiveSetup`

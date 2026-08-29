@@ -11,6 +11,8 @@ use axum::response::Response;
 /// Custom request body extractors with size-limit enforcement.
 pub mod extractors;
 pub(crate) mod kernel;
+/// Request extension trait for DI service resolution.
+pub mod request;
 /// Standardized JSON response builder.
 pub mod responder;
 /// Response extension traits and error helpers.

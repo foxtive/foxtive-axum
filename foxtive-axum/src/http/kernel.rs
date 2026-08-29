@@ -79,11 +79,9 @@ pub(crate) fn setup(router: Router, app: Arc<App>, config: KernelConfig) -> Rout
                 .per_second(rate_limit.period_seconds as u64)
                 .burst_size(rate_limit.burst_size);
 
-            let governor_config = config_builder.finish().unwrap();
+            let governor_config = Arc::new(config_builder.finish().unwrap());
 
-            let governor_layer = GovernorLayer {
-                config: Box::leak(Box::new(governor_config)),
-            };
+            let governor_layer = GovernorLayer::new(governor_config);
 
             router = router.layer(RateLimitLayer { inner: governor_layer });
         }
