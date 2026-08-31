@@ -92,7 +92,7 @@ where
             .get::<BodyConfig>()
             .map(|c| c.json_limit)
             .unwrap_or(2 * 1024 * 1024);
-        
+
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)
             .await
@@ -105,14 +105,12 @@ where
             })?;
 
         // Convert bytes to UTF-8 string efficiently
-        let json = String::from_utf8(bytes.to_vec())
-            .map_err(JsonExtractionError::InvalidUtf8)?;
-        
+        let json = String::from_utf8(bytes.to_vec()).map_err(JsonExtractionError::InvalidUtf8)?;
+
         debug!("[json-body] {}", json);
 
         // Deserialize JSON string to target type
-        let value = serde_json::from_str::<T>(&json)
-            .map_err(JsonExtractionError::InvalidJson)?;
+        let value = serde_json::from_str::<T>(&json).map_err(JsonExtractionError::InvalidJson)?;
 
         Ok(JsonBody { json, value })
     }

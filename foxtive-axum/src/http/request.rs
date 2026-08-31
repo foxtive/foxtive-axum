@@ -1,7 +1,7 @@
-use axum::extract::Request;
 use axum::Extension;
-use foxtive::prelude::{AppMessage, AppResult};
+use axum::extract::Request;
 use foxtive::App;
+use foxtive::prelude::{AppMessage, AppResult};
 use std::sync::Arc;
 
 /// Extension trait for resolving DI services from the request.

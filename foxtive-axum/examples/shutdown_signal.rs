@@ -1,8 +1,8 @@
 use axum::Router;
 use axum::routing::get;
-use foxtive::{App, Environment};
 use foxtive::results::AppResult;
 use foxtive::setup::trace::Tracing;
+use foxtive::{App, Environment};
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::server::Server;

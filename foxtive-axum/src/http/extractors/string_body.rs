@@ -112,7 +112,7 @@ where
             .get::<BodyConfig>()
             .map(|c| c.string_limit)
             .unwrap_or(2 * 1024 * 1024);
-        
+
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)
             .await
@@ -125,9 +125,8 @@ where
             })?;
 
         // Convert bytes to UTF-8 string efficiently
-        let body = String::from_utf8(bytes.to_vec())
-            .map_err(StringExtractionError::InvalidUtf8)?;
-        
+        let body = String::from_utf8(bytes.to_vec()).map_err(StringExtractionError::InvalidUtf8)?;
+
         debug!("[string-body] {}", body);
 
         Ok(Self { body })
