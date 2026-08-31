@@ -30,6 +30,21 @@ pub(crate) async fn run(config: Server) -> AppResult<()> {
     #[allow(unused_mut)]
     let mut app = config.router;
 
+    // Mount nested services (e.g. socket.io) before kernel setup.
+    // route_service matches exact paths, so we also register a trailing-slash variant.
+    for (path, service) in config.nested_services {
+        let slash_path = if path.ends_with('/') {
+            path.clone()
+        } else {
+            format!("{path}/")
+        };
+        if slash_path != path {
+            let cloned = service.clone_box();
+            app = cloned.apply_to_router(app, &slash_path);
+        }
+        app = service.apply_to_router(app, &path);
+    }
+
     #[cfg(feature = "static")]
     let mut static_file_dir: Option<String> = None;
 

@@ -1,5 +1,13 @@
 # Foxtive Axum Changelog
 
+### 1.2.0 (2026-08-31)
+* feat(server): add `Server::nest_service()` for mounting Tower services (e.g. socketioxide) at specific paths
+* feat(server): `nest_service()` uses `route_service` with automatic trailing-slash registration
+* feat(example): add socket.io example demonstrating `socketioxide` integration
+* bump(tower-http): to version 0.7.0
+* bump(validator): to version 0.21.0
+* bump(socketioxide): dev-dependency to version 0.18
+
 ### 1.1.0 (2026-08-29)
 * feat(request): add `RequestExt` trait with `service()`, `service_opt()`, and `service_cloned()` for DI access from handlers
 * fix(rate-limit): adapt to `tower-governor` 0.8 API (`GovernorLayer::new` with `Arc<GovernorConfig>`)

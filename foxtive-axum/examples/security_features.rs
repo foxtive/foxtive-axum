@@ -48,12 +48,8 @@ async fn main() -> AppResult<()> {
             info!("  - GET /health");
         });
 
-    // Add rate limiting if feature is enabled
     #[cfg(feature = "rate-limit")]
-    {
-        server = server.rate_limit(RateLimitConfig::per_minute(100));
-        info!("Rate limiting configured: 100 requests per minute");
-    }
+    let server = server.rate_limit(RateLimitConfig::per_minute(100));
 
     server.run().await
 }

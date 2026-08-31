@@ -2,15 +2,19 @@
 
 use crate::server;
 use axum::Router;
-use axum::http::{HeaderName, HeaderValue, Method};
+use axum::body::Body;
+use axum::http::{HeaderName, HeaderValue, Method, Request};
+use axum::response::IntoResponse;
 use foxtive::App;
 use foxtive::results::AppResult;
 use foxtive::setup::trace::Tracing;
 use futures::future::BoxFuture;
+use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
+use tower::Service;
 
 /// Type alias for a boxed future that resolves when the server should shut down.
 pub type ShutdownSignalHandler = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
@@ -27,7 +31,34 @@ pub struct StaticFileConfig {
     pub dir: String,
 }
 
-/// Configuration for rate limiting.
+/// Type-erased wrapper for Tower services registered on the router.
+pub(crate) trait ErasedRouteService: Send + Sync {
+    fn apply_to_router(self: Box<Self>, router: Router, path: &str) -> Router;
+    fn clone_box(&self) -> Box<dyn ErasedRouteService>;
+}
+
+struct ErasedService<S> {
+    service: S,
+}
+
+impl<S> ErasedRouteService for ErasedService<S>
+where
+    S: Service<Request<Body>, Error = Infallible> + Clone + Send + Sync + 'static,
+    S::Response: IntoResponse,
+    S::Future: Send,
+{
+    fn apply_to_router(self: Box<Self>, router: Router, path: &str) -> Router {
+        router.route_service(path, self.service)
+    }
+
+    fn clone_box(&self) -> Box<dyn ErasedRouteService> {
+        Box::new(ErasedService {
+            service: self.service.clone(),
+        })
+    }
+}
+
+/// Rate limiting configuration.
 ///
 /// # Example
 /// ```rust
@@ -253,6 +284,10 @@ pub struct Server {
     /// list of allowed static media extensions
     #[cfg(feature = "static")]
     pub(crate) allowed_static_media_extensions: Option<Vec<String>>,
+
+    /// Services to mount at specific paths (e.g. socket.io).
+    /// Registered before kernel setup so they don't hit the fallback.
+    pub(crate) nested_services: Vec<(String, Box<dyn ErasedRouteService>)>,
 }
 
 impl Server {
@@ -289,6 +324,7 @@ impl Server {
             #[cfg(feature = "static")]
             allowed_static_media_extensions: None,
             shutdown_signal: None,
+            nested_services: vec![],
         }
     }
 
@@ -566,7 +602,41 @@ impl Server {
         server::run(self).await
     }
 
-    /// Init tracing and load environment variables
+    /// Mount a Tower service at a path (e.g. `/socket.io`).
+    ///
+    /// Uses `route_service` under the hood, matching exact paths only.
+    /// A trailing-slash variant is also registered automatically.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use socketioxide::SocketIo;
+    /// # use foxtive_axum::server::Server;
+    /// # use std::sync::Arc;
+    /// # use foxtive::App;
+    /// # async fn example(app: Arc<App>) {
+    /// let (svc, io) = SocketIo::new_svc();
+    /// io.ns("/", |socket: socketioxide::extract::SocketRef| {});
+    ///
+    /// Server::new(app)
+    ///     .nest_service("/socket.io", svc)
+    ///     .run()
+    ///     .await;
+    /// # }
+    /// ```
+    pub fn nest_service<S>(mut self, path: &str, service: S) -> Self
+    where
+        S: Service<Request<Body>, Error = Infallible> + Clone + Send + Sync + 'static,
+        S::Response: IntoResponse,
+        S::Future: Send,
+    {
+        self.nested_services.push((
+            path.to_string(),
+            Box::new(ErasedService { service }),
+        ));
+        self
+    }
+
+    /// Init tracing and load env vars.
     pub fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
         server::init_bootstrap(service, config)
     }

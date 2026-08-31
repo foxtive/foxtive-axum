@@ -1,6 +1,6 @@
 [package]
 name = "foxtive-axum"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 license = "MIT"
 description = "Micro-Framework Based on Axum"
@@ -51,3 +51,11 @@ path = "examples/byte_extractor.rs"
 name = "security-features"
 path = "examples/security_features.rs"
 required-features = []
+
+[[example]]
+name = "socketio"
+path = "examples/socketio.rs"
+required-features = []
+
+[dev-dependencies]
+socketioxide = "0.18"

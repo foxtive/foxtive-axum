@@ -41,8 +41,7 @@ pub(crate) fn setup(router: Router, app: Arc<App>, config: KernelConfig) -> Rout
         .on_response(DefaultOnResponse::new().include_headers(true));
 
     let cors_layer = if config.allowed_origins.is_empty() {
-        // Restrictive default: no CORS headers sent unless explicitly configured
-        // This is safer for production - browsers will block cross-origin requests
+        // No CORS headers by default
         CorsLayer::new()
     } else {
         CorsLayer::new()
@@ -61,13 +60,12 @@ pub(crate) fn setup(router: Router, app: Arc<App>, config: KernelConfig) -> Rout
             config.client_timeout,
         ));
 
-    // Apply the main middleware builder layers
+    // Middleware stack
     #[allow(unused_mut)]
     let mut router = router.layer(builder);
 
-    // Add rate limiting as a separate layer.
-    // GovernorLayer produces BoxError, but axum's Router requires Into<Infallible>,
-    // so we wrap it with RateLimitService that converts errors to 429 responses.
+    // Rate limiting: GovernorLayer produces BoxError but axum needs Infallible,
+    // so RateLimitService converts errors to 429 responses.
     #[cfg(feature = "rate-limit")]
     let router = {
         if let Some(rate_limit) = config.rate_limit_config {
@@ -101,12 +99,8 @@ pub(crate) fn setup(router: Router, app: Arc<App>, config: KernelConfig) -> Rout
 
     let fallback_config_405 = fallback_config.clone();
 
-    // Inject Arc<App> as a request extension so handlers can extract it
-    // via `Extension(app): Extension<Arc<App>>` without needing router state.
+    // Inject Arc<App> and BodyConfig as request extensions
     let app_layer = Extension(app);
-
-    // Inject BodyConfig so custom extractors (JsonBody, StringBody, ByteBody)
-    // can read configured size limits from request extensions.
     let body_config_layer = Extension(config.body_config);
 
     router
@@ -138,14 +132,12 @@ async fn fallback_404(req: Request<Body>, config: Arc<FallbackConfig>) -> Result
 
         let uri = req.uri().path();
 
-        // check if a static file can be served on this url
-        // this is useful to handle static file request at root path
+        // check if we can serve this as a static file
         if let Some(static_file_dir) = &config.static_file_dir
             && is_url_a_file(uri, &config.allowed_static_media_extensions)
         {
             let path = resolve_static_file_path(Path::new(static_file_dir), Path::new(uri));
             if let Ok(contents) = tokio::fs::read(path).await {
-                // guess file mime
                 let guess = mime_guess::from_path(uri);
                 let mut builder = Response::builder().status(axum::http::StatusCode::OK);
 
@@ -181,10 +173,8 @@ async fn fallback_405(req: Request<Body>, config: Arc<FallbackConfig>) -> HttpRe
                 source: Some(Box::new(e)),
             })?;
 
-        // Add CORS headers manually
         let headers = response.headers_mut();
 
-        // Set Access-Control-Allow-Origin
         if config.allowed_origins.is_empty() {
             // Permissive mode - allow any origin
             if let Some(origin_value) = origin {
@@ -193,7 +183,6 @@ async fn fallback_405(req: Request<Body>, config: Arc<FallbackConfig>) -> HttpRe
                 headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
             }
         } else {
-            // Check if the origin is in allowed origins
             if let Some(origin_value) = origin
                 && config.allowed_origins.contains(origin_value)
             {
@@ -201,7 +190,6 @@ async fn fallback_405(req: Request<Body>, config: Arc<FallbackConfig>) -> HttpRe
             }
         }
 
-        // Set Access-Control-Allow-Methods
         let allowed_methods = config
             .allowed_methods
             .iter()
@@ -224,7 +212,6 @@ async fn fallback_405(req: Request<Body>, config: Arc<FallbackConfig>) -> HttpRe
             );
         }
 
-        // Set Access-Control-Allow-Headers
         let allowed_headers = config.allowed_headers.join(",");
 
         headers.insert(
@@ -241,8 +228,7 @@ async fn fallback_405(req: Request<Body>, config: Arc<FallbackConfig>) -> HttpRe
     }
 }
 
-/// A layer that wraps GovernorLayer and converts its BoxError into Infallible
-/// by turning rate-limit errors into HTTP 429 responses.
+/// Wraps GovernorLayer, converting BoxError to 429 responses.
 #[cfg(feature = "rate-limit")]
 struct RateLimitLayer<G: Clone> {
     inner: G,
@@ -270,7 +256,7 @@ where
     }
 }
 
-/// A service wrapper that converts BoxError to Infallible by producing 429 responses.
+/// Converts rate-limit errors into 429 responses.
 #[cfg(feature = "rate-limit")]
 struct RateLimitService<S: Clone> {
     inner: S,
@@ -299,14 +285,11 @@ where
     type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-        // Governor's poll_ready just delegates to the inner service (axum Router),
-        // which has Error = Infallible, so this never actually fails.
-        self.inner.poll_ready(cx).map_err(|_| unreachable!("inner service is infallible"))
+        self.inner.poll_ready(cx).map_err(|_| unreachable!())
     }
 
     fn call(&mut self, req: axum::http::Request<ReqBody>) -> Self::Future {
         let mut inner = self.inner.clone();
-        // Swap to maintain readiness invariant
         std::mem::swap(&mut self.inner, &mut inner);
 
         Box::pin(async move {
