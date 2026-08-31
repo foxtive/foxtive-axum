@@ -4,13 +4,13 @@
 //! It implements [`IntoResponse`](axum::response::IntoResponse) so errors
 //! are automatically converted to proper HTTP responses.
 
+use crate::contracts::ResponseCodeContract;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use foxtive::prelude::AppMessage;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 use tokio::task::JoinError;
-use crate::contracts::ResponseCodeContract;
 
 /// HTTP error type that converts application errors into HTTP responses.
 ///

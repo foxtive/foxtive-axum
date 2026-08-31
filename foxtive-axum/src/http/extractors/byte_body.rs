@@ -102,7 +102,7 @@ where
             .get::<BodyConfig>()
             .map(|c| c.byte_limit)
             .unwrap_or(10 * 1024 * 1024);
-        
+
         // Extract the body bytes with size limit
         let bytes = axum::body::to_bytes(req.into_body(), max_size)
             .await

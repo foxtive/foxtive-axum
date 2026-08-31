@@ -1,12 +1,12 @@
 //! Integration tests for foxtive-axum.
 
+use axum::Router;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{get, post};
-use axum::Router;
+use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::extractors::{ByteBody, JsonBody, StringBody};
 use foxtive_axum::http::response::ext::StructResponseExt;
-use foxtive_axum::http::HttpResult;
 use serde::{Deserialize, Serialize};
 use tower::ServiceExt;
 
@@ -119,7 +119,12 @@ async fn test_respond_trait() {
     let app = test_router();
 
     let response = app
-        .oneshot(Request::builder().uri("/respond").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/respond")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
