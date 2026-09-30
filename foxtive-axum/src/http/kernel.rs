@@ -1,10 +1,10 @@
 use crate::http::HttpResult;
 use crate::http::responder::Responder;
+use axum::Extension;
 use axum::Router;
 use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Method, Request};
 use axum::response::{IntoResponse, Response};
-use axum::Extension;
 use foxtive::App;
 use foxtive::enums::AppMessage;
 use std::convert::Infallible;
@@ -69,8 +69,8 @@ pub(crate) fn setup(router: Router, app: Arc<App>, config: KernelConfig) -> Rout
     #[cfg(feature = "rate-limit")]
     let router = {
         if let Some(rate_limit) = config.rate_limit_config {
-            use tower_governor::governor::GovernorConfigBuilder;
             use tower_governor::GovernorLayer;
+            use tower_governor::governor::GovernorConfigBuilder;
 
             let mut config_builder = GovernorConfigBuilder::default();
             config_builder
@@ -81,7 +81,9 @@ pub(crate) fn setup(router: Router, app: Arc<App>, config: KernelConfig) -> Rout
 
             let governor_layer = GovernorLayer::new(governor_config);
 
-            router = router.layer(RateLimitLayer { inner: governor_layer });
+            router = router.layer(RateLimitLayer {
+                inner: governor_layer,
+            });
         }
         router
     };
@@ -125,7 +127,10 @@ struct FallbackConfig {
 }
 
 #[allow(unused_variables)]
-async fn fallback_404(req: Request<Body>, config: Arc<FallbackConfig>) -> Result<Response<Body>, Infallible> {
+async fn fallback_404(
+    req: Request<Body>,
+    config: Arc<FallbackConfig>,
+) -> Result<Response<Body>, Infallible> {
     #[cfg(feature = "static")]
     {
         use crate::http::static_file::{is_url_a_file, resolve_static_file_path};
@@ -197,8 +202,8 @@ async fn fallback_405(req: Request<Body>, config: Arc<FallbackConfig>) -> HttpRe
             .collect::<Vec<_>>()
             .join(",");
 
-        let allowed_methods = HeaderValue::from_str(&allowed_methods)
-            .map_err(|e| AppMessage::Infrastructure {
+        let allowed_methods =
+            HeaderValue::from_str(&allowed_methods).map_err(|e| AppMessage::Infrastructure {
                 message: "Invalid header value".to_string(),
                 source: Some(Box::new(e)),
             })?;
@@ -237,7 +242,9 @@ struct RateLimitLayer<G: Clone> {
 #[cfg(feature = "rate-limit")]
 impl<G: Clone> Clone for RateLimitLayer<G> {
     fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -265,7 +272,9 @@ struct RateLimitService<S: Clone> {
 #[cfg(feature = "rate-limit")]
 impl<S: Clone> Clone for RateLimitService<S> {
     fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -282,9 +291,14 @@ where
 {
     type Response = axum::response::Response;
     type Error = Infallible;
-    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
+    >;
 
-    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx).map_err(|_| unreachable!())
     }
 

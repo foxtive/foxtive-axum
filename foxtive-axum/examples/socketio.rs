@@ -7,8 +7,8 @@ use foxtive::setup::trace::Tracing;
 use foxtive_axum::http::HttpResult;
 use foxtive_axum::http::response::ext::StructResponseExt;
 use foxtive_axum::server::Server;
-use socketioxide::extract::{Data, SocketRef};
 use socketioxide::SocketIo;
+use socketioxide::extract::{Data, SocketRef};
 use std::sync::Arc;
 use tracing::info;
 
@@ -68,9 +68,12 @@ async fn on_connect(s: SocketRef) {
 async fn on_chat_connect(s: SocketRef) {
     info!("Chat socket connected: {}", s.id);
 
-    s.on("chat-message", async |s: SocketRef, Data(data): Data<String>| {
-        info!("Chat message: {}", data);
-        let response = format!("Chat echo: {}", data);
-        s.emit("chat-response", &response).ok();
-    });
+    s.on(
+        "chat-message",
+        async |s: SocketRef, Data(data): Data<String>| {
+            info!("Chat message: {}", data);
+            let response = format!("Chat echo: {}", data);
+            s.emit("chat-response", &response).ok();
+        },
+    );
 }

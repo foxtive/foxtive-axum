@@ -679,10 +679,8 @@ impl Server {
         S::Response: IntoResponse,
         S::Future: Send,
     {
-        self.nested_services.push((
-            path.to_string(),
-            Box::new(ErasedService { service }),
-        ));
+        self.nested_services
+            .push((path.to_string(), Box::new(ErasedService { service })));
         self
     }
 
