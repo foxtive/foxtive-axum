@@ -12,9 +12,10 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-    // Build the App (DI container)
+    // Build the App (DI container) with tracing and env configuration
     let app = App::builder("Basic", "BASIC")
         .environment(foxtive::Environment::Local)
+        .tracing(Tracing::default())
         .build()
         .await?;
 
@@ -26,7 +27,7 @@ async fn main() -> AppResult<()> {
         .host("127.0.0.1")
         .port(3000)
         .router(router)
-        .tracing(Tracing::default())
+        .has_started_bootstrap(true) // Tracing already initialized above
         .bootstrap(|app| async move {
             info!("Bootstrapping application: {}", app.app_name());
             Ok(())

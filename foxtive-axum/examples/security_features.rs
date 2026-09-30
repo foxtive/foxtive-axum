@@ -13,9 +13,10 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-    // Build the App (DI container)
+    // Build the App (DI container) with tracing and env configuration
     let app = App::builder("Security Example", "SECURITY")
         .environment(Environment::Local)
+        .tracing(Tracing::default())
         .build()
         .await?;
 
@@ -29,7 +30,7 @@ async fn main() -> AppResult<()> {
         .host("127.0.0.1")
         .port(3002)
         .router(router)
-        .tracing(Tracing::default())
+        .has_started_bootstrap(true) // Tracing already initialized above
         // Request timeout: 30 seconds (protects against slow clients)
         .client_timeout(Duration::from_secs(30))
         .bootstrap(|app| async move {

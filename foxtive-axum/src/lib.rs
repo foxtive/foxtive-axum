@@ -20,6 +20,7 @@
 //! #[tokio::main]
 //! async fn main() -> AppResult<()> {
 //!     let app = App::builder("MyApp", "MYAPP")
+//!         .tracing(Tracing::default())
 //!         .build()
 //!         .await?;
 //!
@@ -29,7 +30,7 @@
 //!         .host("127.0.0.1")
 //!         .port(3000)
 //!         .router(router)
-//!         .tracing(Tracing::default())
+//!         .has_started_bootstrap(true)
 //!         .run()
 //!         .await
 //! }
@@ -59,4 +60,5 @@ pub mod testing;
 // Re-export core foxtive types for convenience
 pub use foxtive::App;
 pub use foxtive::AppBuilder;
+pub use foxtive::ScopedEnv;
 pub use std::sync::Arc;

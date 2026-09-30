@@ -10,9 +10,10 @@ use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-    // Build the App (DI container)
+    // Build the App (DI container) with tracing and env configuration
     let app = App::builder("Shutdown Event Handler", "ON_SHUTDOWN")
         .environment(foxtive::Environment::Local)
+        .tracing(Tracing::default())
         .build()
         .await?;
 
@@ -24,7 +25,7 @@ async fn main() -> AppResult<()> {
         .host("127.0.0.1")
         .port(3000)
         .router(router)
-        .tracing(Tracing::default())
+        .has_started_bootstrap(true) // Tracing already initialized above
         .on_started(async { info!("Server started successfully") })
         .on_shutdown(async {
             warn!("Server shutting down ...");

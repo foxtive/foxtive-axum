@@ -10,13 +10,34 @@ use std::net::SocketAddr;
 use crate::http::kernel;
 use crate::server::config::ShutdownSignalHandler;
 use foxtive::results::AppResult;
-use foxtive::setup::load_environment_variables;
 use foxtive::setup::trace::Tracing;
 use tokio::signal;
 use tracing::{info, warn};
 
-pub(crate) fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
-    load_environment_variables(service);
+/// Initialize tracing configuration.
+///
+/// # Deprecated
+/// This function is deprecated. Use `AppBuilder::tracing()` instead for builder-level
+/// initialization, which provides better fail-fast behavior and earlier tracing availability.
+///
+/// # Example (New Pattern)
+/// ```rust,no_run
+/// use foxtive::App;
+/// use foxtive::setup::trace::Tracing;
+///
+/// # async fn example() -> foxtive::results::AppResult<()> {
+/// let app = App::builder("MyApp", "MYAPP")
+///     .tracing(Tracing::default())
+///     .build()
+///     .await?;
+/// # Ok(())
+/// # }
+/// ```
+#[deprecated(
+    since = "1.3.0",
+    note = "Use AppBuilder::tracing() instead for builder-level initialization"
+)]
+pub(crate) fn init_bootstrap(_service: &str, config: Tracing) -> AppResult<()> {
     foxtive::setup::trace::init_tracing(config)?;
     Ok(())
 }
@@ -24,7 +45,13 @@ pub(crate) fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
 pub(crate) async fn run(config: Server) -> AppResult<()> {
     if !config.has_started_bootstrap {
         let t_config = config.tracing_config.unwrap_or_default();
+        #[allow(deprecated)]
         init_bootstrap(&config.service_name, t_config)?;
+    }
+
+    // Install panic hook if enabled
+    if config.panic_hook {
+        foxtive::setup::panic::install(config.app.env());
     }
 
     #[allow(unused_mut)]

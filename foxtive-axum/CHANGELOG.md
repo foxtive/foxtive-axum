@@ -1,5 +1,15 @@
 # Foxtive Axum Changelog
 
+### 1.3.0 (2026-09-30)
+* **BREAKING** fix(server): remove call to `foxtive::setup::load_environment_variables()` which is now crate-private in foxtive 1.4.0
+* **BREAKING** bump(foxtive): to version 1.4.0
+* feat(server): add `Server::panic_hook(bool)` for structured panic logging with backtrace support
+* feat(export): re-export `ScopedEnv` from foxtive for convenience
+* deprecate(server): `Server::tracing()` - use `AppBuilder::tracing()` instead for builder-level initialization
+* deprecate(server): `Server::init_bootstrap()` - use `AppBuilder::tracing()` and `AppBuilder::env_files()` instead
+* refactor(examples): update all 7 examples to use new builder-level env and tracing pattern
+* docs(lib): update quick-start example to demonstrate new builder pattern
+
 ### 1.2.0 (2026-08-31)
 * feat(server): add `Server::nest_service()` for mounting Tower services (e.g. socketioxide) at specific paths
 * feat(server): `nest_service()` uses `route_service` with automatic trailing-slash registration

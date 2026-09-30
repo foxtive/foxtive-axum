@@ -288,6 +288,9 @@ pub struct Server {
     /// Services to mount at specific paths (e.g. socket.io).
     /// Registered before kernel setup so they don't hit the fallback.
     pub(crate) nested_services: Vec<(String, Box<dyn ErasedRouteService>)>,
+
+    /// Whether to install a structured panic hook with backtrace logging.
+    pub(crate) panic_hook: bool,
 }
 
 impl Server {
@@ -325,6 +328,7 @@ impl Server {
             allowed_static_media_extensions: None,
             shutdown_signal: None,
             nested_services: vec![],
+            panic_hook: false,
         }
     }
 
@@ -420,6 +424,29 @@ impl Server {
     }
 
     /// Set the tracing configuration.
+    ///
+    /// # Deprecated
+    /// Use `AppBuilder::tracing()` instead for builder-level initialization.
+    /// This enables tracing earlier in the application lifecycle and provides
+    /// better fail-fast behavior.
+    ///
+    /// # Example (New Pattern)
+    /// ```rust,no_run
+    /// use foxtive::App;
+    /// use foxtive::setup::trace::Tracing;
+    ///
+    /// # async fn example() -> foxtive::results::AppResult<()> {
+    /// let app = App::builder("MyApp", "MYAPP")
+    ///     .tracing(Tracing::default())
+    ///     .build()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use AppBuilder::tracing() instead for builder-level initialization"
+    )]
     pub fn tracing(mut self, config: Tracing) -> Self {
         self.tracing_config = Some(config);
         self
@@ -597,6 +624,29 @@ impl Server {
         self
     }
 
+    /// Enable structured panic logging with backtrace in debug mode.
+    ///
+    /// When enabled, panics will be logged with structured information including
+    /// the panic message, location, and a backtrace (in debug builds).
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use foxtive_axum::server::Server;
+    /// use foxtive::App;
+    /// use std::sync::Arc;
+    ///
+    /// # async fn example(app: Arc<App>) {
+    /// Server::new(app)
+    ///     .panic_hook(true)
+    ///     .run()
+    ///     .await;
+    /// # }
+    /// ```
+    pub fn panic_hook(mut self, enable: bool) -> Self {
+        self.panic_hook = enable;
+        self
+    }
+
     /// Start the HTTP server and begin accepting connections.
     pub async fn run(self) -> AppResult<()> {
         server::run(self).await
@@ -615,7 +665,7 @@ impl Server {
     /// # use foxtive::App;
     /// # async fn example(app: Arc<App>) {
     /// let (svc, io) = SocketIo::new_svc();
-    /// io.ns("/", |socket: socketioxide::extract::SocketRef| {});
+    /// io.ns("/", |socket: socketioxide::extract::SocketRef| async {});
     ///
     /// Server::new(app)
     ///     .nest_service("/socket.io", svc)
@@ -636,8 +686,16 @@ impl Server {
         self
     }
 
-    /// Init tracing and load env vars.
+    /// Initialize tracing and env configuration.
+    ///
+    /// # Deprecated
+    /// Use `AppBuilder::tracing()` and `AppBuilder::env_files()` instead.
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use AppBuilder::tracing() and AppBuilder::env_files() instead"
+    )]
     pub fn init_bootstrap(service: &str, config: Tracing) -> AppResult<()> {
+        #[allow(deprecated)]
         server::init_bootstrap(service, config)
     }
 }

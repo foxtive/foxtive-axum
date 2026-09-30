@@ -14,8 +14,10 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
+    // Build the App (DI container) with tracing and env configuration
     let app = App::builder("SocketIO Example", "SOCKETIO")
         .environment(foxtive::Environment::Local)
+        .tracing(Tracing::default())
         .build()
         .await?;
 
@@ -30,8 +32,8 @@ async fn main() -> AppResult<()> {
         .host("127.0.0.1")
         .port(3000)
         .router(router)
+        .has_started_bootstrap(true) // Tracing already initialized above
         .nest_service("/socket.io", svc)
-        .tracing(Tracing::default())
         .bootstrap(|app| async move {
             info!("Bootstrapping application: {}", app.app_name());
             Ok(())
